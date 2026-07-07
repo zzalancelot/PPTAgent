@@ -1,0 +1,5 @@
+# Copy to `ai-keys.yaml` (gitignored) or set the AI_KEYS_ANTHROPIC env var.
+# gateway-server imports this file via spring.config.import.
+ai:
+  keys:
+    anthropic: "sk-ant-your-key-here"

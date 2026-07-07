@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package ppt.gateway.v1;
+
+option java_package = "com.ppt.agent.gateway.v1";
+option java_multiple_files = true;
+option java_outer_classname = "ModelGatewayProto";
+
+// One model turn per request. Tool schemas and arguments cross the wire as
+// JSON strings; the caller owns the tool-execution loop.
+service ModelGateway {
+  rpc Chat(ChatRequest) returns (ChatResponse);
+  rpc ChatStream(ChatRequest) returns (stream ChatEvent);
+  rpc ListCapabilities(ListCapabilitiesRequest) returns (ListCapabilitiesResponse);
+}
+
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  SYSTEM = 1;
+  USER = 2;
+  ASSISTANT = 3;
+  TOOL_RESULTS = 4;
+}
+
+message ToolCall {
+  string id = 1;
+  string name = 2;
+  string args_json = 3;
+}
+
+message ToolResultItem {
+  string id = 1;
+  string name = 2;
+  string content = 3;
+}
+
+message Message {
+  Role role = 1;
+  string text = 2;
+  repeated ToolCall tool_calls = 3;         // ASSISTANT only
+  repeated ToolResultItem tool_results = 4; // TOOL_RESULTS only
+}
+
+message ToolSpec {
+  string name = 1;
+  string description = 2;
+  string parameters_schema_json = 3;
+}
+
+message ChatRequest {
+  string capability = 1;
+  repeated Message messages = 2;
+  repeated ToolSpec tools = 3;
+  map<string, string> param_overrides = 4;
+  string request_id = 5;
+}
+
+message Usage {
+  int32 prompt_tokens = 1;
+  int32 completion_tokens = 2;
+  int32 total_tokens = 3;
+}
+
+message ResolvedCapability {
+  string capability = 1;
+  string provider = 2;
+  string model = 3;
+}
+
+message ChatResponse {
+  string text = 1;
+  repeated ToolCall tool_calls = 2;
+  ResolvedCapability resolved = 3;
+  Usage usage = 4;
+}
+
+message TextDelta {
+  string content = 1;
+}
+
+message ToolCallEvent {
+  ToolCall call = 1;
+}
+
+message Done {
+  string full_text = 1;
+  repeated ToolCall tool_calls = 2;
+}
+
+message ErrorEvent {
+  string message = 1;
+  string code = 2;
+}
+
+message ChatEvent {
+  oneof event {
+    TextDelta text_delta = 1;
+    ToolCallEvent tool_call = 2;
+    Done done = 3;
+    ErrorEvent error = 4;
+  }
+}
+
+message ListCapabilitiesRequest {}
+
+message CapabilityInfo {
+  string alias = 1;
+  string provider = 2;
+  string model = 3;
+  map<string, string> params = 4;
+}
+
+message ListCapabilitiesResponse {
+  repeated CapabilityInfo capabilities = 1;
+  string default_capability = 2;
+}

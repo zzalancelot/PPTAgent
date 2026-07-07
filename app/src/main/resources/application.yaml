@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: ppt-agent-app
+  main:
+    # The app never runs an HTTP server; it is a gRPC client smoke runner.
+    web-application-type: none
+
+gateway:
+  client:
+    host: localhost
+    port: 9090
