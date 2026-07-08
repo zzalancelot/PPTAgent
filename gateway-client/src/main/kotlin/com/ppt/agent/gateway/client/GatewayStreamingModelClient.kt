@@ -30,9 +30,17 @@ class GatewayStreamingModelClient(
             asyncStub.chatStream(
                 request,
                 object : StreamObserver<ChatEvent> {
-                    override fun onNext(value: ChatEvent) = sink.next(ClientMappers.toStreamEvent(value))
-                    override fun onError(t: Throwable) = sink.error(t)
-                    override fun onCompleted() = sink.complete()
+                    override fun onNext(value: ChatEvent) {
+                        sink.next(ClientMappers.toStreamEvent(value))
+                    }
+
+                    override fun onError(t: Throwable) {
+                        sink.error(t)
+                    }
+
+                    override fun onCompleted() {
+                        sink.complete()
+                    }
                 },
             )
         }

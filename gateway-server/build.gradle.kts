@@ -35,7 +35,10 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("io.micrometer:micrometer-registry-prometheus")
 
-    implementation("org.springframework.ai:spring-ai-starter-model-anthropic")
+    // OpenAI-compatible client library (no auto-config). DeepSeek, MiMo and
+    // MiniMax are all reached through OpenAI-compatible endpoints; concrete
+    // ChatModel instances are built manually per gateway.models entry.
+    implementation("org.springframework.ai:spring-ai-openai")
 
     implementation("io.grpc:grpc-netty-shaded:$grpcVersion")
     implementation("io.grpc:grpc-protobuf:$grpcVersion")

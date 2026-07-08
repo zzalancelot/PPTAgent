@@ -25,6 +25,8 @@ dependencies {
     api("io.grpc:grpc-protobuf:$grpcVersion")
     api("io.grpc:grpc-stub:$grpcVersion")
     api("io.grpc:grpc-kotlin-stub:$grpcKotlinVersion")
+    // Required by the generated grpc-kotlin coroutine stubs.
+    api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
     // Provides javax.annotation.Generated referenced by grpc-java generated stubs.
     compileOnly("org.apache.tomcat:annotations-api:6.0.53")
 }

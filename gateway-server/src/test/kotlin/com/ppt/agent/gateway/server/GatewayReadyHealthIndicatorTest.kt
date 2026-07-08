@@ -10,9 +10,9 @@ class GatewayReadyHealthIndicatorTest {
 
     private val registry = CapabilityRegistry(
         entries = mapOf(
-            "fast-chat" to CapabilitySpec("fast-chat", "anthropic", "claude-opus-4-6", emptyMap()),
+            "deepseek" to CapabilitySpec("deepseek", "deepseek", "deepseek-chat", emptyMap()),
         ),
-        defaultCapability = "fast-chat",
+        defaultCapability = "deepseek",
     )
 
     private fun lifecycle() = GrpcServerLifecycle(
@@ -41,7 +41,7 @@ class GatewayReadyHealthIndicatorTest {
 
     @Test
     fun `down when no capabilities configured`() {
-        val emptyRegistry = CapabilityRegistry(emptyMap(), "fast-chat")
+        val emptyRegistry = CapabilityRegistry(emptyMap(), "deepseek")
         val lifecycle = lifecycle()
         lifecycle.start()
         try {

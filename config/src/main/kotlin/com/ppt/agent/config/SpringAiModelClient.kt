@@ -77,26 +77,26 @@ class SpringAiModelClient(private val chatModel: ChatModel) : ModelClient {
         if (tools.isNotEmpty()) {
             builder.toolCallbacks(tools.map(::toToolCallback))
         }
-        // The gateway does exactly one turn; never let Spring AI run the loop.
-        builder.internalToolExecutionEnabled(false)
+        // In Spring AI 2.0 ChatModel.call()/stream() never execute tools on their
+        // own (no ToolCallingManager here), so a single turn returns tool-call
+        // requests verbatim for the caller to handle.
         return builder.build()
     }
 
     private fun toSpringMessage(message: ChatMessage): Message = when (message) {
         is ChatMessage.System -> SystemMessage(message.text)
         is ChatMessage.User -> UserMessage(message.text)
-        is ChatMessage.Assistant -> AssistantMessage(
-            message.text ?: "",
-            emptyMap<String, Any>(),
-            message.toolCalls.map { AssistantMessage.ToolCall(it.id, "function", it.name, it.argsJson) },
-        )
-        is ChatMessage.ToolResults -> ToolResponseMessage(
-            message.items.map { ToolResponseMessage.ToolResponse(it.id, it.name, it.content) },
-        )
+        is ChatMessage.Assistant -> AssistantMessage.builder()
+            .content(message.text ?: "")
+            .toolCalls(message.toolCalls.map { AssistantMessage.ToolCall(it.id, "function", it.name, it.argsJson) })
+            .build()
+        is ChatMessage.ToolResults -> ToolResponseMessage.builder()
+            .responses(message.items.map { ToolResponseMessage.ToolResponse(it.id, it.name, it.content) })
+            .build()
     }
 
     private fun toFrameworkToolCall(call: AssistantMessage.ToolCall): ToolCall =
-        ToolCall(id = call.id ?: "", name = call.name ?: "", argsJson = call.arguments ?: "{}")
+        ToolCall(id = call.id(), name = call.name(), argsJson = call.arguments())
 
     private fun toToolCallback(tool: Tool): ToolCallback = DefinitionOnlyToolCallback(tool)
 

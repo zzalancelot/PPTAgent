@@ -9,55 +9,57 @@ import kotlin.test.assertTrue
 
 class ModelHealthProbeTest {
 
+    // Three model ids, but two of them point at the same provider+model, so a
+    // single sweep should probe only two distinct (provider, model) pairs.
     private fun registry() = CapabilityRegistry(
         entries = mapOf(
-            "fast-chat" to CapabilitySpec("fast-chat", "anthropic", "claude-opus-4-6", emptyMap()),
-            "reasoning" to CapabilitySpec("reasoning", "anthropic", "claude-opus-4-6", emptyMap()),
-            "extraction" to CapabilitySpec("extraction", "anthropic", "claude-opus-4-6", emptyMap()),
+            "deepseek" to CapabilitySpec("deepseek", "deepseek", "deepseek-chat", emptyMap()),
+            "deepseek-alt" to CapabilitySpec("deepseek-alt", "deepseek", "deepseek-chat", emptyMap()),
+            "mimo" to CapabilitySpec("mimo", "mimo", "mimo-v2.5-pro", emptyMap()),
         ),
-        defaultCapability = "fast-chat",
+        defaultCapability = "deepseek",
     )
 
     private fun health(mode: String = "real") = GatewayCapabilitiesProperties.Health().apply {
         probeMode = mode
     }
 
-    private fun providers(chatModel: FakeChatModel, registry: SimpleMeterRegistry): ProviderChatModels =
-        ProviderChatModels(
-            clients = mapOf("anthropic" to SpringAiModelClient(chatModel)),
-            chatModels = mapOf("anthropic" to chatModel),
-            meterRegistry = registry,
-        )
+    // Both providers share the SAME FakeChatModel so callCount aggregates.
+    private fun providers(fake: FakeChatModel): ProviderChatModels = ProviderChatModels(
+        clients = mapOf("deepseek" to SpringAiModelClient(fake), "mimo" to SpringAiModelClient(fake)),
+        chatModels = mapOf("deepseek" to fake, "mimo" to fake),
+        meterRegistry = SimpleMeterRegistry(),
+    )
 
     @Test
     fun `429 marks every entry down and probes are deduplicated per model`() {
         val fake = FakeChatModel.failing { RuntimeException("HTTP 429 Too Many Requests") }
-        val probe = ModelHealthProbe(registry(), providers(fake, SimpleMeterRegistry()), health())
+        val probe = ModelHealthProbe(registry(), providers(fake), health())
 
         val results = probe.probeAll()
 
         assertEquals(3, results.size)
         assertTrue(results.all { it.status == ModelHealthProbe.ModelStatus.DOWN })
         assertTrue(results.all { it.detail == "rate limited (429)" })
-        // Three aliases share one model -> exactly one live probe.
-        assertEquals(1, fake.callCount.get())
+        // deepseek + deepseek-alt collapse to one probe; mimo is the other.
+        assertEquals(2, fake.callCount.get())
     }
 
     @Test
-    fun `healthy model reports up`() {
+    fun `healthy models report up`() {
         val fake = FakeChatModel.replying("pong")
-        val probe = ModelHealthProbe(registry(), providers(fake, SimpleMeterRegistry()), health())
+        val probe = ModelHealthProbe(registry(), providers(fake), health())
 
         val results = probe.probeAll()
 
         assertTrue(results.all { it.status == ModelHealthProbe.ModelStatus.UP })
-        assertEquals(1, fake.callCount.get())
+        assertEquals(2, fake.callCount.get())
     }
 
     @Test
     fun `non-real probe mode is disabled without calling the model`() {
         val fake = FakeChatModel.replying("pong")
-        val probe = ModelHealthProbe(registry(), providers(fake, SimpleMeterRegistry()), health(mode = "off"))
+        val probe = ModelHealthProbe(registry(), providers(fake), health(mode = "off"))
 
         val results = probe.probeAll()
 

@@ -8,33 +8,30 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 /**
- * Wires providers and gateway beans. The Anthropic [ChatModel] is
- * auto-configured by `spring-ai-starter-model-anthropic`.
+ * Wires the gateway beans. One OpenAI-compatible [ChatModel] is built per
+ * `gateway.models` entry (DeepSeek / MiMo / MiniMax); requests are routed to one
+ * of them by the model id carried in the request.
  */
 @Configuration(proxyBeanMethods = false)
 class GatewayConfig {
 
     @Bean
     fun capabilityRegistry(props: GatewayCapabilitiesProperties): CapabilityRegistry {
-        val entries = props.capabilities.mapValues { (alias, config) ->
-            CapabilitySpec(alias, config.provider, config.model, config.params)
+        val entries = props.models.mapValues { (id, entry) ->
+            CapabilitySpec(capability = id, provider = id, model = entry.model, params = entry.params)
         }
-        return CapabilityRegistry(entries, props.defaultCapability)
+        return CapabilityRegistry(entries, props.defaultModel)
     }
 
     @Bean
-    fun springAiModelClient(chatModel: ChatModel): SpringAiModelClient = SpringAiModelClient(chatModel)
-
-    @Bean
     fun providerChatModels(
-        chatModel: ChatModel,
-        springAiModelClient: SpringAiModelClient,
+        props: GatewayCapabilitiesProperties,
         meterRegistry: MeterRegistry,
-    ): ProviderChatModels = ProviderChatModels(
-        clients = mapOf("anthropic" to springAiModelClient),
-        chatModels = mapOf("anthropic" to chatModel),
-        meterRegistry = meterRegistry,
-    )
+    ): ProviderChatModels {
+        val chatModels: Map<String, ChatModel> = props.models.mapValues { (_, entry) -> ChatModelFactory.create(entry) }
+        val clients: Map<String, SpringAiModelClient> = chatModels.mapValues { (_, model) -> SpringAiModelClient(model) }
+        return ProviderChatModels(clients = clients, chatModels = chatModels, meterRegistry = meterRegistry)
+    }
 
     @Bean
     fun modelGatewayService(

@@ -5,12 +5,6 @@ spring:
     import:
       - optional:classpath:ai-keys.yaml
       - optional:file:./ai-keys.yaml
-  ai:
-    anthropic:
-      api-key: ${ai.keys.anthropic:${ANTHROPIC_API_KEY:}}
-      chat:
-        options:
-          model: claude-opus-4-6   # verify against Anthropic docs
 
 # Ops HTTP endpoints + actuator only. gRPC listens separately on gateway.grpc.port.
 server:
@@ -35,28 +29,34 @@ management:
 gateway:
   grpc:
     port: 9090
-  default-capability: fast-chat
+  default-model: deepseek
   health:
     probe-mode: real
     timeout: 8s
     cache-ttl: 15s
     probe-prompt: ping
-  capabilities:
-    fast-chat:
-      provider: anthropic
-      model: claude-opus-4-6
+  # Each entry is an OpenAI-compatible endpoint. base-url must NOT include the
+  # trailing /v1 (the client appends /v1/chat/completions). Verify model ids and
+  # base URLs against each provider's current docs.
+  models:
+    deepseek:
+      base-url: https://api.deepseek.com
+      model: deepseek-chat
+      api-key: ${ai.keys.deepseek:${DEEPSEEK_API_KEY:}}
       params:
         temperature: "0.7"
         max_tokens: "4096"
-    reasoning:
-      provider: anthropic
-      model: claude-opus-4-6
+    mimo:
+      base-url: https://api.xiaomimimo.com
+      model: mimo-v2.5-pro
+      api-key: ${ai.keys.mimo:${MIMO_API_KEY:}}
       params:
-        temperature: "0.4"
-        max_tokens: "8192"
-    extraction:
-      provider: anthropic
-      model: claude-opus-4-6
+        temperature: "0.7"
+        max_tokens: "4096"
+    minimax:
+      base-url: https://api.minimax.io
+      model: MiniMax-M2
+      api-key: ${ai.keys.minimax:${MINIMAX_API_KEY:}}
       params:
-        temperature: "0.2"
-        max_tokens: "2048"
+        temperature: "0.7"
+        max_tokens: "4096"

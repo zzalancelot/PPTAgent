@@ -10,39 +10,39 @@ class CapabilityRegistryTest {
 
     private fun registry() = CapabilityRegistry(
         entries = mapOf(
-            "fast-chat" to CapabilitySpec("fast-chat", "anthropic", "claude-opus-4-6", mapOf("temperature" to "0.7")),
-            "reasoning" to CapabilitySpec("reasoning", "anthropic", "claude-opus-4-6", mapOf("temperature" to "0.4")),
+            "deepseek" to CapabilitySpec("deepseek", "deepseek", "deepseek-chat", mapOf("temperature" to "0.7")),
+            "mimo" to CapabilitySpec("mimo", "mimo", "mimo-v2.5-pro", mapOf("temperature" to "0.4")),
         ),
-        defaultCapability = "fast-chat",
+        defaultCapability = "deepseek",
     )
 
     @Test
-    fun `resolves a known alias`() {
-        val spec = registry().resolve("reasoning")
-        assertEquals("reasoning", spec.capability)
-        assertEquals("claude-opus-4-6", spec.model)
+    fun `resolves a known model id`() {
+        val spec = registry().resolve("mimo")
+        assertEquals("mimo", spec.capability)
+        assertEquals("mimo-v2.5-pro", spec.model)
         assertEquals("0.4", spec.params["temperature"])
     }
 
     @Test
-    fun `null or blank alias falls back to default`() {
-        assertEquals("fast-chat", registry().resolve(null).capability)
-        assertEquals("fast-chat", registry().resolve("   ").capability)
+    fun `null or blank id falls back to default`() {
+        assertEquals("deepseek", registry().resolve(null).capability)
+        assertEquals("deepseek", registry().resolve("   ").capability)
     }
 
     @Test
-    fun `unknown alias fails fast`() {
+    fun `unknown id fails fast`() {
         assertThrows<CapabilityRegistry.UnknownCapabilityException> {
             registry().resolve("does-not-exist")
         }
     }
 
     @Test
-    fun `exposes alias table`() {
+    fun `exposes the model table`() {
         val registry = registry()
-        assertTrue(registry.contains("fast-chat"))
+        assertTrue(registry.contains("deepseek"))
         assertFalse(registry.contains("missing"))
-        assertEquals(setOf("fast-chat", "reasoning"), registry.aliases())
+        assertEquals(setOf("deepseek", "mimo"), registry.aliases())
         assertEquals(2, registry.all().size)
     }
 }
