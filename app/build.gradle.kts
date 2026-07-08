@@ -20,6 +20,7 @@ dependencies {
     implementation(project(":gateway-client"))
     implementation(project(":business"))
     implementation(project(":llm-adapter"))
+    implementation(project(":renderer"))
 
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.springframework.boot:spring-boot-starter")
@@ -39,4 +40,9 @@ kotlin {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+// Resolve ai-keys.yaml and write pptx under build/output/ from the repo root.
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+    workingDir = rootProject.projectDir
 }

@@ -42,3 +42,7 @@ out/
 
 ### Kotlin ###
 .kotlin
+
+### Local dev runtime (scripts/dev-up.sh) ###
+.run/
+build/output/pptx/

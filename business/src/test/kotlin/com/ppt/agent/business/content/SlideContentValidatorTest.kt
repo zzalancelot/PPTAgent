@@ -26,19 +26,21 @@ class SlideContentValidatorTest {
         transition = null,
     )
 
+    /** Defaults are "rich": 5 bullets, a long-enough subtitle, and 80+-char notes — satisfies every density range. */
     private fun slideContent(
         index: Int,
         type: String,
         title: String = "A Title",
-        bullets: List<String> = listOf("a", "b", "c"),
+        bullets: List<String> = listOf("one", "two", "three", "four", "five"),
         sectionId: String = "s1",
-        notes: String? = "notes",
+        subtitle: String? = "a subtitle that is long enough",
+        notes: String? = "n".repeat(100),
     ) = SlideContent(
         index = index,
         sectionId = sectionId,
         slideType = type,
         title = title,
-        subtitle = null,
+        subtitle = subtitle,
         bullets = bullets,
         speakerNotes = notes,
         bodyText = null,
@@ -47,7 +49,7 @@ class SlideContentValidatorTest {
     @Test
     fun validContentSlideHasNoViolations() {
         val outline = outlineSlide(5, SlideTypes.CONTENT)
-        val content = slideContent(5, SlideTypes.CONTENT, bullets = listOf("one", "two", "three"))
+        val content = slideContent(5, SlideTypes.CONTENT)
         assertTrue(validator.validateSlide(content, outline).isEmpty())
     }
 
@@ -66,24 +68,100 @@ class SlideContentValidatorTest {
     }
 
     @Test
-    fun contentSlideWithTooFewBulletsIsReported() {
+    fun contentSlideWithThreeBulletsIsReported() {
         val outline = outlineSlide(5, SlideTypes.CONTENT)
-        val content = slideContent(5, SlideTypes.CONTENT, bullets = listOf("only one"))
-        assertTrue(validator.validateSlide(content, outline).any { it.contains("2-4 bullets") })
+        val content = slideContent(5, SlideTypes.CONTENT, bullets = listOf("1", "2", "3"))
+        assertTrue(validator.validateSlide(content, outline).any { it.contains("4-6 bullets") })
     }
 
     @Test
     fun contentSlideWithTooManyBulletsIsReported() {
         val outline = outlineSlide(5, SlideTypes.CONTENT)
-        val content = slideContent(5, SlideTypes.CONTENT, bullets = listOf("1", "2", "3", "4", "5"))
-        assertTrue(validator.validateSlide(content, outline).any { it.contains("2-4 bullets") })
+        val content = slideContent(5, SlideTypes.CONTENT, bullets = listOf("1", "2", "3", "4", "5", "6", "7"))
+        assertTrue(validator.validateSlide(content, outline).any { it.contains("4-6 bullets") })
     }
 
     @Test
-    fun comparisonSlideAlsoRequiresTwoToFourBullets() {
+    fun comparisonSlideAlsoRequiresFourToSixBullets() {
         val outline = outlineSlide(5, SlideTypes.COMPARISON)
         val content = slideContent(5, SlideTypes.COMPARISON, bullets = listOf("only one"))
-        assertTrue(validator.validateSlide(content, outline).any { it.contains("2-4 bullets") })
+        assertTrue(validator.validateSlide(content, outline).any { it.contains("4-6 bullets") })
+    }
+
+    @Test
+    fun codeOrDemoRequiresThreeToFiveBullets() {
+        val outline = outlineSlide(5, SlideTypes.CODE_OR_DEMO)
+        val tooFew = slideContent(5, SlideTypes.CODE_OR_DEMO, bullets = listOf("1", "2"))
+        assertTrue(validator.validateSlide(tooFew, outline).any { it.contains("3-5 bullets") })
+
+        val justRight = slideContent(5, SlideTypes.CODE_OR_DEMO, bullets = listOf("1", "2", "3", "4"))
+        assertTrue(validator.validateSlide(justRight, outline).isEmpty())
+    }
+
+    @Test
+    fun agendaRequiresFiveToSevenBullets() {
+        val outline = outlineSlide(3, SlideTypes.AGENDA)
+        val tooFew = slideContent(3, SlideTypes.AGENDA, bullets = listOf("1", "2", "3"), subtitle = null)
+        assertTrue(validator.validateSlide(tooFew, outline).any { it.contains("5-7 bullets") })
+
+        val justRight = slideContent(
+            3,
+            SlideTypes.AGENDA,
+            bullets = listOf("1", "2", "3", "4", "5"),
+            subtitle = null,
+        )
+        assertTrue(validator.validateSlide(justRight, outline).isEmpty())
+    }
+
+    @Test
+    fun summaryRequiresFiveToSixBullets() {
+        val outline = outlineSlide(27, SlideTypes.SUMMARY)
+        val tooFew = slideContent(27, SlideTypes.SUMMARY, bullets = listOf("1", "2", "3"), subtitle = null)
+        assertTrue(validator.validateSlide(tooFew, outline).any { it.contains("5-6 bullets") })
+
+        val justRight = slideContent(27, SlideTypes.SUMMARY, bullets = listOf("1", "2", "3", "4", "5"), subtitle = null)
+        assertTrue(validator.validateSlide(justRight, outline).isEmpty())
+    }
+
+    @Test
+    fun contentSlideWithoutSubtitleIsReported() {
+        val outline = outlineSlide(5, SlideTypes.CONTENT)
+        val content = slideContent(5, SlideTypes.CONTENT, subtitle = null)
+        assertTrue(validator.validateSlide(content, outline).any { it.contains("subtitle") })
+    }
+
+    @Test
+    fun contentSlideWithTooShortSubtitleIsReported() {
+        val outline = outlineSlide(5, SlideTypes.CONTENT)
+        val content = slideContent(5, SlideTypes.CONTENT, subtitle = "short")
+        assertTrue(validator.validateSlide(content, outline).any { it.contains("subtitle") })
+    }
+
+    @Test
+    fun contentSlideWithoutSpeakerNotesIsReported() {
+        val outline = outlineSlide(5, SlideTypes.CONTENT)
+        val content = slideContent(5, SlideTypes.CONTENT, notes = null)
+        assertTrue(validator.validateSlide(content, outline).any { it.contains("speakerNotes") })
+    }
+
+    @Test
+    fun contentSlideWithTooShortSpeakerNotesIsReported() {
+        val outline = outlineSlide(5, SlideTypes.CONTENT)
+        val content = slideContent(5, SlideTypes.CONTENT, notes = "too short")
+        assertTrue(validator.validateSlide(content, outline).any { it.contains("speakerNotes") })
+    }
+
+    @Test
+    fun validRichSlideWithSubtitleFiveBulletsAndNotesPasses() {
+        val outline = outlineSlide(5, SlideTypes.FRAMEWORK)
+        val content = slideContent(
+            5,
+            SlideTypes.FRAMEWORK,
+            bullets = listOf("one", "two", "three", "four", "five"),
+            subtitle = "a subtitle that is long enough",
+            notes = "n".repeat(100),
+        )
+        assertTrue(validator.validateSlide(content, outline).isEmpty())
     }
 
     @Test
@@ -103,7 +181,11 @@ class SlideContentValidatorTest {
     @Test
     fun sectionDividerWithExcessiveBulletsIsReported() {
         val outline = outlineSlide(5, SlideTypes.SECTION_DIVIDER)
-        val content = slideContent(5, SlideTypes.SECTION_DIVIDER, bullets = listOf("1", "2", "3", "4", "5", "6", "7"))
+        val content = slideContent(
+            5,
+            SlideTypes.SECTION_DIVIDER,
+            bullets = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9"),
+        )
         assertTrue(validator.validateSlide(content, outline).any { it.contains("too many bullets") })
     }
 

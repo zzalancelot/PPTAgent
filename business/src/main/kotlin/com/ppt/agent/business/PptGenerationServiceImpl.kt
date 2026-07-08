@@ -9,6 +9,8 @@ import com.ppt.agent.business.input.PptInputParser
 import com.ppt.agent.business.outline.OutlineJson
 import com.ppt.agent.business.outline.OutlinePlanner
 import com.ppt.agent.business.outline.OutlineResult
+import com.ppt.agent.business.theme.ThemeColorPicker
+import com.ppt.agent.business.theme.ThemeColorResult
 import com.ppt.agent.framework.ChatMessage
 import com.ppt.agent.framework.GatewayModel
 import com.ppt.agent.llm.adapter.LlmAdapter
@@ -26,6 +28,7 @@ class PptGenerationServiceImpl(
     private val inputParser: PptInputParser,
     private val outlinePlanner: OutlinePlanner,
     private val slideContentGenerator: SlideContentGenerator,
+    private val themeColorPicker: ThemeColorPicker,
 ) : PptGenerationService {
 
     override fun pingLlm(model: GatewayModel): String =
@@ -46,4 +49,7 @@ class PptGenerationServiceImpl(
         outline: OutlineJson,
         modelPool: List<GatewayModel>,
     ): ContentResult = slideContentGenerator.generate(input, outline, modelPool)
+
+    override fun pickThemeColors(outline: OutlineJson, model: GatewayModel): ThemeColorResult =
+        themeColorPicker.pick(outline, model)
 }

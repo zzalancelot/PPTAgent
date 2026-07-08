@@ -1,5 +1,6 @@
 package com.ppt.agent.app
 
+import com.ppt.agent.app.output.PptOutputConfiguration
 import com.ppt.agent.business.BusinessConfiguration
 import com.ppt.agent.gateway.client.GatewayClientConfiguration
 import com.ppt.agent.llm.adapter.LlmAdapterConfiguration
@@ -16,6 +17,7 @@ import org.springframework.context.annotation.Import
     GatewayClientConfiguration::class,
     LlmAdapterConfiguration::class,
     BusinessConfiguration::class,
+    PptOutputConfiguration::class,
 )
 @SpringBootApplication
 class PptAgentApplication

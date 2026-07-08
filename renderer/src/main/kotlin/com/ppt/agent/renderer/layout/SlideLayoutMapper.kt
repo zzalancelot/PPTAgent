@@ -41,3 +41,17 @@ object SlideLayoutMapper {
     fun map(slideType: String): SlideLayoutKind =
         mapOrNull(slideType) ?: throw IllegalArgumentException("Unsupported slideType: '$slideType'")
 }
+
+/**
+ * Fixed layout index into the template slide master (0-6), matching the layout
+ * contract in `PPTX_RENDER_MODE_SPEC.md`. Used by `TemplatePptxWriter`.
+ */
+fun SlideLayoutKind.toLayoutIndex(): Int = when (this) {
+    SlideLayoutKind.TITLE -> 0
+    SlideLayoutKind.AGENDA -> 1
+    SlideLayoutKind.SECTION_DIVIDER -> 2
+    SlideLayoutKind.BULLETS -> 3
+    SlideLayoutKind.TWO_COLUMN -> 4
+    SlideLayoutKind.BODY_TEXT -> 5
+    SlideLayoutKind.CLOSING -> 6
+}

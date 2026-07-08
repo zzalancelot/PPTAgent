@@ -1,5 +1,7 @@
 package com.ppt.agent.app.api
 
+import com.ppt.agent.app.output.PptxExportResult
+import com.ppt.agent.app.output.PptxExportService
 import com.ppt.agent.business.PptGenerationService
 import com.ppt.agent.business.content.ContentError
 import com.ppt.agent.business.content.ContentResult
@@ -11,10 +13,13 @@ import com.ppt.agent.business.outline.OutlineJson
 import com.ppt.agent.business.outline.OutlineResult
 import com.ppt.agent.business.content.SlideDeckContent
 import com.ppt.agent.framework.GatewayModel
+import org.springframework.core.io.FileSystemResource
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -29,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/v1/ppt")
 class PptApiController(
     private val pptGenerationService: PptGenerationService,
+    private val pptxExportService: PptxExportService,
 ) {
 
   /** Quick liveness + documents available pipeline stages. */
@@ -36,8 +42,9 @@ class PptApiController(
   fun health(): Map<String, Any> =
       mapOf(
           "status" to "ok",
-          "stages" to listOf("parse", "outline", "content"),
-          "defaultStage" to "outline",
+          "stages" to STAGES.toList(),
+          "defaultStage" to "pptx",
+          "pptxOutputDir" to "build/output/pptx",
       )
 
   /** One-shot gateway connectivity check through business → llm-adapter → gateway-client. */
@@ -55,6 +62,7 @@ class PptApiController(
    * - `parse` — validation only (milliseconds)
    * - `outline` — parse + one LLM call for the full deck plan (~1–2 min)
    * - `content` — parse + outline + per-slide LLM calls (~several minutes for 27 slides)
+   * - `pptx` — same as `content`, then render a downloadable `.pptx` under `build/output/pptx/`
    */
   @PostMapping("/run", consumes = [MediaType.APPLICATION_JSON_VALUE])
   fun run(
@@ -127,7 +135,8 @@ class PptApiController(
     timing["content"] = elapsedMs(contentStart)
 
   return when (contentResult) {
-      is ContentResult.Ok ->
+      is ContentResult.Ok -> {
+        if (normalizedStage == "content") {
           ResponseEntity.ok(
               okResponse(
                   "content",
@@ -141,6 +150,41 @@ class PptApiController(
                   ),
               ),
           )
+        } else {
+          val pptxStart = System.nanoTime()
+          val export = pptxExportService.render(contentResult.deck, input.topic)
+          timing["pptx"] = elapsedMs(pptxStart)
+          when (export) {
+            is PptxExportResult.Ok ->
+                ResponseEntity.ok(
+                    okResponse(
+                        "pptx",
+                        input = input,
+                        outline = outline,
+                        content = contentResult.deck,
+                        timing = timing,
+                        modelsUsed = mapOf(
+                            "outline" to resolvedOutlineModel.id,
+                            "content" to resolvedContentModel.id,
+                        ),
+                        pptx = export.info.toResponse(),
+                    ),
+                )
+            is PptxExportResult.Err ->
+                ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(
+                    PptRunResponse(
+                        stage = "pptx",
+                        status = "error",
+                        input = input,
+                        outline = outline,
+                        content = contentResult.deck,
+                        errors = listOf(mapOf("type" to "pptx_render_failed", "message" to export.message)),
+                        timingMs = timing,
+                    ),
+                )
+          }
+        }
+      }
       is ContentResult.Err ->
           ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(
               PptRunResponse(
@@ -155,6 +199,22 @@ class PptApiController(
     }
   }
 
+  /** Download a `.pptx` produced by `stage=pptx` (files live under `build/output/pptx/`). */
+  @GetMapping("/download/{fileName}")
+  fun download(@PathVariable fileName: String): ResponseEntity<Any> {
+    val path = pptxExportService.resolveDownload(fileName)
+        ?: return ResponseEntity.notFound().build()
+    val resource = FileSystemResource(path)
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"$fileName\"")
+        .contentType(
+            MediaType.parseMediaType(
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            ),
+        )
+        .body(resource)
+  }
+
   private fun okResponse(
       stage: String,
       input: PptInput,
@@ -162,6 +222,7 @@ class PptApiController(
       content: SlideDeckContent? = null,
       timing: Map<String, Long>,
       modelsUsed: Map<String, String> = emptyMap(),
+      pptx: PptxFileResponse? = null,
   ): PptRunResponse =
       PptRunResponse(
           stage = stage,
@@ -169,6 +230,7 @@ class PptApiController(
           input = input,
           outline = outline,
           content = content,
+          pptx = pptx,
           modelsUsed = modelsUsed,
           timingMs = timing,
       )
@@ -182,9 +244,22 @@ class PptApiController(
   private fun elapsedMs(startNanos: Long): Long = (System.nanoTime() - startNanos) / 1_000_000
 
   companion object {
-    private val STAGES = setOf("parse", "outline", "content")
+    private val STAGES = setOf("parse", "outline", "content", "pptx")
   }
 }
+
+data class PptxFileResponse(
+    val fileName: String,
+    val downloadUrl: String,
+    val slideCount: Int,
+)
+
+private fun com.ppt.agent.app.output.PptxExportInfo.toResponse() =
+    PptxFileResponse(
+        fileName = fileName,
+        downloadUrl = downloadPath,
+        slideCount = slideCount,
+    )
 
 data class PptRunResponse(
     val stage: String,
@@ -192,6 +267,7 @@ data class PptRunResponse(
     val input: PptInput? = null,
     val outline: OutlineJson? = null,
     val content: SlideDeckContent? = null,
+    val pptx: PptxFileResponse? = null,
     val modelsUsed: Map<String, String> = emptyMap(),
     val errors: List<Map<String, Any?>> = emptyList(),
     val timingMs: Map<String, Long> = emptyMap(),

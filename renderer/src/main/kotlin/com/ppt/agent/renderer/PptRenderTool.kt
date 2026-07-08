@@ -7,7 +7,17 @@ import java.nio.file.Path
  * tests, or a future orchestrator. No LLM, no network, no Spring.
  */
 interface PptRenderTool {
-    fun render(inputJson: Path, outputPptx: Path): RenderToolResult
+    /**
+     * @param mode render strategy; defaults to [RenderMode.PROGRAMMATIC] for backward compat.
+     * @param templatePath required when [mode] is [RenderMode.TEMPLATE] unless the bundled
+     *        default template is used. Ignored for [RenderMode.PROGRAMMATIC].
+     */
+    fun render(
+        inputJson: Path,
+        outputPptx: Path,
+        mode: RenderMode = RenderMode.PROGRAMMATIC,
+        templatePath: Path? = null,
+    ): RenderToolResult
 }
 
 sealed class RenderToolResult {
@@ -26,4 +36,6 @@ sealed class RenderToolError {
     data class ValidationFailed(val violations: List<String>) : RenderToolError()
     data class UnsupportedSlideType(val index: Int, val slideType: String) : RenderToolError()
     data class IoFailure(val message: String) : RenderToolError()
+    data class TemplateNotFound(val path: String) : RenderToolError()
+    data class TemplateLayoutMissing(val layoutKind: String) : RenderToolError()
 }

@@ -28,7 +28,7 @@ class SlideContentGeneratorTest {
     private fun template(): String =
         javaClass.getResource("/content/single-slide-response.json")!!.readText()
 
-    private enum class Behavior { VALID, TRUNCATED, THROW }
+    private enum class Behavior { VALID, TRUNCATED, THROW, THIN }
 
     /**
      * Scriptable fake adapter. Decides each response from the requested slide
@@ -69,6 +69,7 @@ class SlideContentGeneratorTest {
                     Behavior.VALID -> ModelResponse(validResponse(idx), emptyList())
                     Behavior.TRUNCATED -> ModelResponse("{\"index\": $idx, \"title\": \"incomplete", emptyList())
                     Behavior.THROW -> throw IllegalStateException("model $model unavailable")
+                    Behavior.THIN -> ModelResponse(thinResponse(idx), emptyList())
                 }
             } finally {
                 concurrent.decrementAndGet()
@@ -97,6 +98,18 @@ class SlideContentGeneratorTest {
             map["index"] = idx
             return Json.toJson(map)
         }
+
+        /** Valid JSON, but density-rule-thin: too few bullets, a short subtitle, and short notes. */
+        private fun thinResponse(idx: Int): String = Json.toJson(
+            linkedMapOf(
+                "index" to idx,
+                "title" to "Thin Title",
+                "subtitle" to "short",
+                "bullets" to listOf("one", "two"),
+                "speakerNotes" to "too short",
+                "bodyText" to null,
+            ),
+        )
     }
 
     @Test
@@ -182,5 +195,21 @@ class SlideContentGeneratorTest {
         assertEquals(2, adapter.callsByKey["3|deepseek"])
         // Exception is not a truncation signal → tokens stay at baseline for both attempts.
         assertEquals(listOf("4096", "4096"), adapter.tokensByKey["3|deepseek"]!!.toList())
+    }
+
+    @Test
+    fun thinContentFailsDensityValidationThenRetrySucceedsWithoutTokenBump() {
+        // Slide 4 (opening → DEEPSEEK, type 'content'): first attempt is valid JSON but too thin
+        // (2 bullets, short subtitle/notes) → fails density validation and must retry.
+        val adapter = RecordingContentAdapter(template()) { idx, _, callNo ->
+            if (idx == 4 && callNo == 1) Behavior.THIN else Behavior.VALID
+        }
+
+        val result = SlideContentGeneratorImpl(adapter).generate(input, outline())
+
+        assertTrue(result is ContentResult.Ok, "expected Ok after validation retry, got $result")
+        assertEquals(2, adapter.callsByKey["4|deepseek"], "should retry once after thin content fails validation")
+        // Validation failures append feedback and retry WITHOUT bumping tokens.
+        assertEquals(listOf("4096", "4096"), adapter.tokensByKey["4|deepseek"]!!.toList())
     }
 }

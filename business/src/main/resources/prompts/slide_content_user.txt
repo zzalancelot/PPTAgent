@@ -18,4 +18,7 @@ narrative_arc: {narrative_arc}
 previous: {prev_slide_hint}
 next: {next_slide_hint}
 
+Expand this slide's theme for the audience. Use outline intent and bulletHints as seeds —
+each bullet should teach one incremental idea. Do not leave the slide with only 2–3 thin lines.
+
 Return ONLY the JSON object for this slide.

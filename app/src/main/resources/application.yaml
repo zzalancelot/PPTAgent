@@ -9,3 +9,8 @@ gateway:
   client:
     host: localhost
     port: 9090
+
+# Rendered decks: GET /v1/ppt/download/{fileName}
+ppt:
+  output:
+    dir: build/output/pptx

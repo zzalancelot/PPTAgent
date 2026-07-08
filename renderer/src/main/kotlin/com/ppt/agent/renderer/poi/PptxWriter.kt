@@ -21,9 +21,9 @@ import java.nio.file.Path
  * with light text and one accent color; CJK-friendly fonts. Speaker notes are
  * attached (best effort) when present.
  */
-class PptxWriter {
+internal class PptxWriter : DeckRenderer {
 
-    fun write(deck: DeckDocument, output: Path) {
+    override fun write(deck: DeckDocument, output: Path) {
         val slides = deck.slides.orEmpty()
         val ppt = XMLSlideShow()
         try {
@@ -76,14 +76,25 @@ class PptxWriter {
         addTitle(slide, doc.title.orEmpty(), titleColor)
         doc.subtitle?.takeIf { it.isNotBlank() }?.let { subtitleUnderTitle(slide, it) }
 
-        val bullets = doc.bullets.orEmpty().filter { it.isNotBlank() }
-        val body = box(slide, MARGIN, 150.0, SLIDE_W - 2 * MARGIN, 340.0)
-        if (bullets.isEmpty()) {
-            doc.bodyText?.takeIf { it.isNotBlank() }?.let { addLine(body, it, 20.0, TEXT_BODY, font = CJK) }
-            return
+        // bodyText (when present) sits between subtitle and bullets, in a muted, smaller font —
+        // it never replaces the bullets, it bridges into them.
+        var y = CONTENT_TOP
+        val bodyText = doc.bodyText
+        if (!bodyText.isNullOrBlank()) {
+            val bodyBox = box(slide, MARGIN, y, SLIDE_W - 2 * MARGIN, BODY_TEXT_H)
+            addLine(bodyBox, bodyText, BODY_TEXT_SIZE, TEXT_SUBTLE, font = CJK)
+            y += BODY_TEXT_H + BODY_TEXT_GAP
         }
+
+        val bullets = doc.bullets.orEmpty().filter { it.isNotBlank() }
+        if (bullets.isEmpty()) return
+
+        val bodyHeight = (CONTENT_TOP + CONTENT_H - y).coerceAtLeast(MIN_BULLETS_H)
+        val body = box(slide, MARGIN, y, SLIDE_W - 2 * MARGIN, bodyHeight)
+        // Prefer a smaller font over silently truncating when there's more to fit.
+        val size = if (bullets.size > MANY_BULLETS_THRESHOLD) SMALL_BULLET_SIZE else DEFAULT_BULLET_SIZE
         bullets.forEachIndexed { i, text ->
-            addBullet(body, text, 20.0, TEXT_BODY, first = i == 0)
+            addBullet(body, text, size, TEXT_BODY, first = i == 0)
         }
     }
 
@@ -93,13 +104,14 @@ class PptxWriter {
         val mid = (bullets.size + 1) / 2
         val left = bullets.take(mid)
         val right = bullets.drop(mid)
+        val size = if (bullets.size > MANY_BULLETS_THRESHOLD) SMALL_BULLET_SIZE else DEFAULT_BULLET_SIZE
 
         val colW = (SLIDE_W - 3 * MARGIN) / 2
-        val leftBox = box(slide, MARGIN, 150.0, colW, 340.0)
-        left.forEachIndexed { i, t -> addBullet(leftBox, t, 20.0, TEXT_BODY, first = i == 0) }
+        val leftBox = box(slide, MARGIN, CONTENT_TOP, colW, CONTENT_H)
+        left.forEachIndexed { i, t -> addBullet(leftBox, t, size, TEXT_BODY, first = i == 0) }
 
-        val rightBox = box(slide, MARGIN * 2 + colW, 150.0, colW, 340.0)
-        right.forEachIndexed { i, t -> addBullet(rightBox, t, 20.0, TEXT_BODY, first = i == 0) }
+        val rightBox = box(slide, MARGIN * 2 + colW, CONTENT_TOP, colW, CONTENT_H)
+        right.forEachIndexed { i, t -> addBullet(rightBox, t, size, TEXT_BODY, first = i == 0) }
     }
 
     private fun renderBodyText(slide: XSLFSlide, doc: SlideDocument) {
@@ -194,6 +206,21 @@ class PptxWriter {
         private const val SLIDE_W = 960.0
         private const val SLIDE_H = 540.0
         private const val MARGIN = 48.0
+
+        // Shared content area (below title/subtitle) for BULLETS / TWO_COLUMN layouts.
+        private const val CONTENT_TOP = 150.0
+        private const val CONTENT_H = 340.0
+        private const val MIN_BULLETS_H = 120.0
+
+        // bodyText, when rendered above the bullets, gets a compact reserved band.
+        private const val BODY_TEXT_H = 60.0
+        private const val BODY_TEXT_GAP = 10.0
+        private const val BODY_TEXT_SIZE = 16.0
+
+        // Prefer a smaller bullet font over silent truncation once a slide is bullet-heavy.
+        private const val MANY_BULLETS_THRESHOLD = 5
+        private const val DEFAULT_BULLET_SIZE = 20.0
+        private const val SMALL_BULLET_SIZE = 17.0
 
         private val BG = Color(30, 30, 46)
         private val TEXT_LIGHT = Color(245, 245, 245)

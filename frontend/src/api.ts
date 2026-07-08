@@ -1,7 +1,7 @@
 import axios from "axios";
 
 /** Pipeline stages exposed by `PptApiController`. */
-export type Stage = "parse" | "outline" | "content";
+export type Stage = "parse" | "outline" | "content" | "pptx";
 
 /** Gateway model ids (see framework `GatewayModel`). */
 export type ModelId = "deepseek" | "mimo" | "minimax";
@@ -107,12 +107,19 @@ export interface SlideDeckContent {
 /** A structured pipeline error (shape varies by `type`). */
 export type PipelineError = Record<string, unknown> & { type?: string; message?: string };
 
+export interface PptxFileInfo {
+  fileName: string;
+  downloadUrl: string;
+  slideCount: number;
+}
+
 export interface RunResponse {
   stage: Stage;
   status: "ok" | "error";
   input?: PptInput;
   outline?: OutlineJson;
   content?: SlideDeckContent;
+  pptx?: PptxFileInfo;
   errors: PipelineError[];
   timingMs: Record<string, number>;
 }

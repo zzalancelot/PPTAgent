@@ -1,6 +1,7 @@
 import {
   Alert,
   Badge,
+  Button,
   Card,
   Descriptions,
   Empty,
@@ -11,7 +12,12 @@ import {
   Tag,
   Typography,
 } from "antd";
-import { CheckCircleTwoTone, CloseCircleTwoTone, RocketOutlined } from "@ant-design/icons";
+import {
+  CheckCircleTwoTone,
+  CloseCircleTwoTone,
+  DownloadOutlined,
+  RocketOutlined,
+} from "@ant-design/icons";
 import type { RunResponse, Stage } from "../api";
 import ErrorList from "./ErrorList";
 import OutlineView from "./OutlineView";
@@ -19,7 +25,12 @@ import ContentView from "./ContentView";
 
 const { Text } = Typography;
 
-const STAGE_LABEL: Record<Stage, string> = { parse: "解析", outline: "大纲", content: "内容" };
+const STAGE_LABEL: Record<Stage, string> = {
+  parse: "解析",
+  outline: "大纲",
+  content: "内容",
+  pptx: "PPTX",
+};
 
 function TimingBar({ timingMs }: { timingMs: Record<string, number> }) {
   const entries = Object.entries(timingMs);
@@ -56,7 +67,9 @@ export default function ResultView({ loading, requestedStage, networkError, resu
           <RocketOutlined spin style={{ color: "#6366f1" }} />
           <Text type="secondary">
             正在执行「{STAGE_LABEL[requestedStage]}」阶段
-            {requestedStage === "content" ? "，逐页生成可能需要数分钟…" : "…"}
+            {requestedStage === "content" || requestedStage === "pptx"
+              ? "，逐页生成可能需要数分钟…"
+              : "…"}
           </Text>
         </Space>
         <Skeleton active paragraph={{ rows: 6 }} />
@@ -118,6 +131,29 @@ export default function ResultView({ loading, requestedStage, networkError, resu
       </Flex>
 
       <TimingBar timingMs={result.timingMs} />
+
+      {result.pptx ? (
+        <Card variant="borderless" style={{ background: "rgba(16,185,129,0.08)" }}>
+          <Flex align="center" justify="space-between" wrap gap={12}>
+            <Space direction="vertical" size={4}>
+              <Text strong>演示文稿已生成</Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {result.pptx.fileName} · {result.pptx.slideCount} 页 · 保存在{" "}
+                <code>build/output/pptx/</code>
+              </Text>
+            </Space>
+            <Button
+              type="primary"
+              size="large"
+              icon={<DownloadOutlined />}
+              href={result.pptx.downloadUrl}
+              download={result.pptx.fileName}
+            >
+              下载 PPTX
+            </Button>
+          </Flex>
+        </Card>
+      ) : null}
 
       {result.errors?.length ? <ErrorList errors={result.errors} /> : null}
 

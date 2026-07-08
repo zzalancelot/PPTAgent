@@ -6,11 +6,13 @@ import com.ppt.agent.business.input.ParseResult
 import com.ppt.agent.business.input.PptInput
 import com.ppt.agent.business.outline.OutlineJson
 import com.ppt.agent.business.outline.OutlineResult
+import com.ppt.agent.business.theme.ThemeColorResult
 import com.ppt.agent.framework.GatewayModel
 
 /**
- * PPT domain entry point. Covers input parsing and outline planning today; no
- * slide content or `.pptx` rendering. See BUSINESS_ADAPTER_SPEC.md non-goals.
+ * PPT domain entry point. Covers input parsing, outline planning, slide
+ * content, and theme-color picking today; no `.pptx` rendering. See
+ * BUSINESS_ADAPTER_SPEC.md non-goals.
  */
 interface PptGenerationService {
     /** Placeholder entry point for future JSON-in -> pptx-out pipeline. */
@@ -28,4 +30,7 @@ interface PptGenerationService {
         outline: OutlineJson,
         modelPool: List<GatewayModel> = ModelPool.DEFAULT,
     ): ContentResult
+
+    /** Picks a 5-color Morandi theme palette tailored to [outline]. See THEME_COLOR_SPEC.md. */
+    fun pickThemeColors(outline: OutlineJson, model: GatewayModel = GatewayModel.DEEPSEEK_FLASH): ThemeColorResult
 }

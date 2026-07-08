@@ -10,7 +10,8 @@ import {
   type RunResponse,
   type Stage,
 } from "./api";
-import InputForm from "./components/InputForm";
+import DebugModeSwitch, { readDebugMode, writeDebugMode } from "./components/DebugModeSwitch";
+import InputForm, { DEFAULT_STAGE } from "./components/InputForm";
 import ResultView from "./components/ResultView";
 
 const { Text } = Typography;
@@ -31,9 +32,15 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RunResponse | null>(null);
   const [networkError, setNetworkError] = useState<string | null>(null);
-  const [requestedStage, setRequestedStage] = useState<Stage>("outline");
+  const [requestedStage, setRequestedStage] = useState<Stage>(DEFAULT_STAGE);
   const [health, setHealth] = useState<HealthState>("unknown");
   const [pinging, setPinging] = useState(false);
+  const [debugMode, setDebugMode] = useState(readDebugMode);
+
+  const handleDebugModeChange = (enabled: boolean) => {
+    setDebugMode(enabled);
+    writeDebugMode(enabled);
+  };
 
   const refreshHealth = useCallback(async () => {
     try {
@@ -96,10 +103,11 @@ export default function App() {
             </div>
             <div>
               <h1 className="brand__title">PPT Agent 演示文稿生成台</h1>
-              <p className="brand__subtitle">输入主题 · 生成大纲 · 逐页成稿</p>
+              <p className="brand__subtitle">输入主题 · 生成大纲 · 逐页成稿 · 下载 PPTX</p>
             </div>
           </div>
-          <Space size={12}>
+          <Space size={12} wrap>
+            <DebugModeSwitch checked={debugMode} onChange={handleDebugModeChange} />
             <Tooltip title="检查 app 服务健康状态">
               <Space size={8}>
                 {healthBadge}
@@ -120,7 +128,7 @@ export default function App() {
         <Row gutter={[24, 24]} style={{ marginTop: 8 }}>
           <Col xs={24} lg={9} xl={8}>
             <div className="sticky-col">
-              <InputForm loading={loading} onRun={handleRun} />
+              <InputForm loading={loading} debugMode={debugMode} onRun={handleRun} />
               <Text
                 type="secondary"
                 style={{ display: "block", marginTop: 12, fontSize: 12, textAlign: "center" }}

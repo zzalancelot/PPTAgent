@@ -8,6 +8,8 @@ import com.ppt.agent.business.content.SlideContentGenerator
 import com.ppt.agent.business.outline.OutlineJson
 import com.ppt.agent.business.outline.OutlinePlanner
 import com.ppt.agent.business.outline.OutlineResult
+import com.ppt.agent.business.theme.ThemeColorPicker
+import com.ppt.agent.business.theme.ThemeColorResult
 import com.ppt.agent.framework.ChatMessage
 import com.ppt.agent.framework.GatewayModel
 import com.ppt.agent.framework.ModelResponse
@@ -99,6 +101,21 @@ private class FakeSlideContentGenerator(
     }
 }
 
+private class FakeThemeColorPicker(
+    private val result: ThemeColorResult = ThemeColorResult.Err(emptyList()),
+) : ThemeColorPicker {
+    var callCount = 0
+    var lastOutline: OutlineJson? = null
+    var lastModel: GatewayModel? = null
+
+    override fun pick(outline: OutlineJson, model: GatewayModel): ThemeColorResult {
+        callCount++
+        lastOutline = outline
+        lastModel = model
+        return result
+    }
+}
+
 /** No Spring context: verifies the service delegates to its collaborators, never the gateway directly. */
 class PptGenerationServiceTest {
 
@@ -107,7 +124,8 @@ class PptGenerationServiceTest {
         parser: PptInputParser = FakePptInputParser(),
         planner: OutlinePlanner = FakeOutlinePlanner(),
         generator: SlideContentGenerator = FakeSlideContentGenerator(),
-    ) = PptGenerationServiceImpl(adapter, parser, planner, generator)
+        themePicker: ThemeColorPicker = FakeThemeColorPicker(),
+    ) = PptGenerationServiceImpl(adapter, parser, planner, generator, themePicker)
 
     @Test
     fun pingLlmSendsASinglePingMessageAndReturnsTheAdapterResponseText() {
@@ -200,5 +218,37 @@ class PptGenerationServiceTest {
         assertEquals(1, fakeGenerator.callCount)
         assertEquals(input, fakeGenerator.lastInput)
         assertSame(outline, fakeGenerator.lastOutline)
+    }
+
+    @Test
+    fun pickThemeColorsDelegatesToTheThemeColorPickerWithSameOutlineAndModel() {
+        val outline = com.ppt.agent.framework.Json.fromJson(
+            javaClass.getResource("/outline/valid-outline.json")!!.readText(),
+            OutlineJson::class.java,
+        )
+        val expected = ThemeColorResult.Err(emptyList())
+        val fakePicker = FakeThemeColorPicker(expected)
+        val service = service(themePicker = fakePicker)
+
+        val result = service.pickThemeColors(outline, GatewayModel.DEEPSEEK_FLASH)
+
+        assertSame(expected, result)
+        assertEquals(1, fakePicker.callCount)
+        assertSame(outline, fakePicker.lastOutline)
+        assertEquals(GatewayModel.DEEPSEEK_FLASH, fakePicker.lastModel)
+    }
+
+    @Test
+    fun pickThemeColorsDefaultsToDeepseekFlashModel() {
+        val outline = com.ppt.agent.framework.Json.fromJson(
+            javaClass.getResource("/outline/valid-outline.json")!!.readText(),
+            OutlineJson::class.java,
+        )
+        val fakePicker = FakeThemeColorPicker()
+        val service = service(themePicker = fakePicker)
+
+        service.pickThemeColors(outline)
+
+        assertEquals(GatewayModel.DEEPSEEK_FLASH, fakePicker.lastModel)
     }
 }

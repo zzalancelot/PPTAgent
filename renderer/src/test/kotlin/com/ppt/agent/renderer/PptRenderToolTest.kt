@@ -107,4 +107,76 @@ class PptRenderToolTest {
     fun cliReturnsOneWhenArgumentsMissing() {
         assertEquals(1, runCli(arrayOf("--input")))
     }
+
+    // ---- dual render modes ----
+
+    @Test
+    fun programmaticModeStillDefault() {
+        val input = tempFile("prog", ".json", fixtureText())
+        val output = tempFile("prog", ".pptx")
+
+        val result = PptRenderToolImpl().render(input, output, RenderMode.PROGRAMMATIC)
+
+        assertTrue(result is RenderToolResult.Ok, "expected Ok, got $result")
+        assertEquals(27, (result as RenderToolResult.Ok).slideCount)
+        assertEquals(27, slideCount(output))
+        assertTrue(firstSlideText(output).contains("Python"), "first slide should mention Python")
+    }
+
+    @Test
+    fun templateModeWithBundledTemplate() {
+        val input = tempFile("tmpl", ".json", fixtureText())
+        val output = tempFile("tmpl", ".pptx")
+
+        val result = PptRenderToolImpl().render(input, output, RenderMode.TEMPLATE)
+
+        assertTrue(result is RenderToolResult.Ok, "expected Ok, got $result")
+        assertEquals(27, (result as RenderToolResult.Ok).slideCount)
+        assertTrue(Files.size(output) > 0, "template output pptx should not be empty")
+        assertEquals(27, slideCount(output))
+    }
+
+    @Test
+    fun templateModeWithExplicitTemplatePath() {
+        val bytes = javaClass.getResourceAsStream("/templates/deck-template.pptx")!!.readBytes()
+        val templateFile = tempFile("custom-template", ".pptx")
+        Files.write(templateFile, bytes)
+
+        val input = tempFile("tmpl2", ".json", fixtureText())
+        val output = tempFile("tmpl2", ".pptx")
+
+        val result = PptRenderToolImpl().render(input, output, RenderMode.TEMPLATE, templateFile)
+
+        assertTrue(result is RenderToolResult.Ok, "expected Ok, got $result")
+        assertEquals(27, (result as RenderToolResult.Ok).slideCount)
+        assertEquals(27, slideCount(output))
+    }
+
+    @Test
+    fun templateModeMissingFileReportsTemplateNotFound() {
+        val input = tempFile("tmpl3", ".json", fixtureText())
+        val output = tempFile("tmpl3", ".pptx")
+        val missing = Path.of("does-not-exist-${System.nanoTime()}.pptx")
+
+        val result = PptRenderToolImpl().render(input, output, RenderMode.TEMPLATE, missing)
+
+        assertTrue(result is RenderToolResult.Err, "expected Err, got $result")
+        assertTrue((result as RenderToolResult.Err).errors.any { it is RenderToolError.TemplateNotFound })
+    }
+
+    @Test
+    fun cliAcceptsModeFlag() {
+        val input = tempFile("clim", ".json", fixtureText())
+        val output = tempFile("clim", ".pptx")
+
+        val code = runCli(arrayOf("--mode", "template", "--input", input.toString(), "--output", output.toString()))
+
+        assertEquals(0, code)
+        assertEquals(27, slideCount(output))
+    }
+
+    @Test
+    fun cliRejectsInvalidMode() {
+        assertEquals(1, runCli(arrayOf("--mode", "bogus", "--input", "x.json", "--output", "y.pptx")))
+    }
 }

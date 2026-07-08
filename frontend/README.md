@@ -11,6 +11,19 @@
 后端需要先启动（在仓库根目录）：
 
 ```bash
+# 一键启动 gateway + app + frontend
+./scripts/dev-up.sh
+
+# 停止全部服务
+./scripts/dev-down.sh
+
+# 查看状态
+./scripts/dev-status.sh
+```
+
+或分别手动启动：
+
+```bash
 # 1) 网关（gRPC :9090 / 运维 HTTP :9091）
 ./gradlew :gateway-server:bootRun
 
