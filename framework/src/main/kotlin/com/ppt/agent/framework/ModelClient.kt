@@ -8,7 +8,17 @@ import reactor.core.publisher.Flux
  * never a concrete provider model id.
  */
 interface ModelClient {
-    fun chat(messages: List<ChatMessage>, tools: List<Tool>, model: String): ModelResponse
+    /**
+     * [paramOverrides] is blind transport plumbing forwarded to the gateway
+     * (e.g. `max_tokens`). Upper layers own any retry/escalation decisions; this
+     * client just forwards the map as-is over the wire.
+     */
+    fun chat(
+        messages: List<ChatMessage>,
+        tools: List<Tool>,
+        model: String,
+        paramOverrides: Map<String, String> = emptyMap(),
+    ): ModelResponse
 }
 
 /**

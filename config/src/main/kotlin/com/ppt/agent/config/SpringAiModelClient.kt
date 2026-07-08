@@ -38,15 +38,12 @@ class SpringAiModelClient(
     private val optionsBuilder: () -> ToolCallingChatOptions.Builder<*> = { ToolCallingChatOptions.builder() },
 ) : ModelClient {
 
-    override fun chat(messages: List<ChatMessage>, tools: List<Tool>, model: String): ModelResponse =
-        chat(messages, tools, model, emptyMap())
-
-    fun chat(
+    override fun chat(
         messages: List<ChatMessage>,
         tools: List<Tool>,
         model: String,
-        params: Map<String, String>,
-    ): ModelResponse = mapResponse(chatModel.call(buildPrompt(messages, tools, model, params)))
+        paramOverrides: Map<String, String>,
+    ): ModelResponse = mapResponse(chatModel.call(buildPrompt(messages, tools, model, paramOverrides)))
 
     fun buildPrompt(
         messages: List<ChatMessage>,

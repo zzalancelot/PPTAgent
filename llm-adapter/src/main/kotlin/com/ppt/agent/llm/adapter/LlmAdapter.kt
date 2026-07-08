@@ -21,7 +21,17 @@ import reactor.core.publisher.Flux
  * interface, not as changes to callers.
  */
 interface LlmAdapter {
-    fun chat(messages: List<ChatMessage>, tools: List<Tool>, model: GatewayModel): ModelResponse
+    /**
+     * [paramOverrides] is an optional blind passthrough to the gateway (e.g.
+     * `max_tokens`). Retry, token-ladder and truncation decisions belong to the
+     * caller (business layer) — the adapter never inspects or mutates the map.
+     */
+    fun chat(
+        messages: List<ChatMessage>,
+        tools: List<Tool>,
+        model: GatewayModel,
+        paramOverrides: Map<String, String> = emptyMap(),
+    ): ModelResponse
 
     fun chatStream(messages: List<ChatMessage>, tools: List<Tool>, model: GatewayModel): Flux<ModelStreamEvent>
 }

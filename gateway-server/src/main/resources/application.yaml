@@ -29,7 +29,7 @@ management:
 gateway:
   grpc:
     port: 9090
-  default-model: deepseek
+  default-model: deepseek-flash
   health:
     probe-mode: real
     timeout: 8s
@@ -45,7 +45,21 @@ gateway:
       api-key: ${ai.keys.deepseek:${DEEPSEEK_API_KEY:}}
       params:
         temperature: "0.7"
-        max_tokens: "4096"
+        max_tokens: "8192"
+    deepseek-pro:
+      base-url: https://api.deepseek.com
+      model: deepseek-v4-pro
+      api-key: ${ai.keys.deepseek:${DEEPSEEK_API_KEY:}}
+      params:
+        temperature: "0.7"
+        max_tokens: "8192"
+    deepseek-flash:
+      base-url: https://api.deepseek.com
+      model: deepseek-v4-flash
+      api-key: ${ai.keys.deepseek:${DEEPSEEK_API_KEY:}}
+      params:
+        temperature: "0.7"
+        max_tokens: "8192"
     mimo:
       base-url: https://api.xiaomimimo.com
       model: mimo-v2.5-pro

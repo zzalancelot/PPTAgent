@@ -3,6 +3,7 @@ package com.ppt.agent.gateway.server
 import org.springframework.ai.chat.model.ChatModel
 import org.springframework.ai.openai.OpenAiChatModel
 import org.springframework.ai.openai.OpenAiChatOptions
+import java.time.Duration
 
 /**
  * Builds an OpenAI-compatible [ChatModel] from a [GatewayCapabilitiesProperties.ModelEntry].
@@ -12,6 +13,8 @@ import org.springframework.ai.openai.OpenAiChatOptions
  * [OpenAiChatOptions] itself.
  */
 object ChatModelFactory {
+
+    private const val DEFAULT_TIMEOUT_SECONDS = 600L
 
     fun create(entry: GatewayCapabilitiesProperties.ModelEntry): ChatModel {
         val options = OpenAiChatOptions.builder()
@@ -23,6 +26,8 @@ object ChatModelFactory {
         entry.params["temperature"]?.toDoubleOrNull()?.let { options.temperature(it) }
         entry.params["max_tokens"]?.toIntOrNull()?.let { options.maxTokens(it) }
         entry.params["top_p"]?.toDoubleOrNull()?.let { options.topP(it) }
+        val timeoutSeconds = entry.params["timeout_seconds"]?.toLongOrNull() ?: DEFAULT_TIMEOUT_SECONDS
+        options.timeout(Duration.ofSeconds(timeoutSeconds))
 
         return OpenAiChatModel.builder()
             .options(options.build())

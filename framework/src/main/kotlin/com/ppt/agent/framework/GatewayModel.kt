@@ -10,7 +10,12 @@ import reactor.core.publisher.Flux
  * key in the gateway-server configuration).
  */
 enum class GatewayModel(val id: String) {
+    /** Legacy alias; routes to `deepseek-chat` in gateway-server until fully migrated. */
     DEEPSEEK("deepseek"),
+    /** DeepSeek-V4-Pro — stronger model for outline / planning. */
+    DEEPSEEK_PRO("deepseek-pro"),
+    /** DeepSeek-V4-Flash — cost-efficient model for per-slide content. */
+    DEEPSEEK_FLASH("deepseek-flash"),
     MIMO("mimo"),
     MINIMAX("minimax");
 
@@ -22,8 +27,12 @@ enum class GatewayModel(val id: String) {
 }
 
 /** Enum-typed convenience over [ModelClient.chat]. */
-fun ModelClient.chat(messages: List<ChatMessage>, tools: List<Tool>, model: GatewayModel): ModelResponse =
-    chat(messages, tools, model.id)
+fun ModelClient.chat(
+    messages: List<ChatMessage>,
+    tools: List<Tool>,
+    model: GatewayModel,
+    paramOverrides: Map<String, String> = emptyMap(),
+): ModelResponse = chat(messages, tools, model.id, paramOverrides)
 
 /** Enum-typed convenience over [StreamingModelClient.chatStream]. */
 fun StreamingModelClient.chatStream(

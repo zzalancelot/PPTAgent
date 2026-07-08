@@ -23,8 +23,12 @@ class PassthroughLlmAdapter(
     private val streamingModelClient: StreamingModelClient,
 ) : LlmAdapter {
 
-    override fun chat(messages: List<ChatMessage>, tools: List<Tool>, model: GatewayModel): ModelResponse =
-        modelClient.chat(messages, tools, model)
+    override fun chat(
+        messages: List<ChatMessage>,
+        tools: List<Tool>,
+        model: GatewayModel,
+        paramOverrides: Map<String, String>,
+    ): ModelResponse = modelClient.chat(messages, tools, model, paramOverrides)
 
     override fun chatStream(
         messages: List<ChatMessage>,

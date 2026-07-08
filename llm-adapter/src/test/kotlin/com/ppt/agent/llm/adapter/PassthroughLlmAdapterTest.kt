@@ -16,11 +16,18 @@ private class FakeModelClient(private val response: ModelResponse) : ModelClient
     var lastMessages: List<ChatMessage>? = null
     var lastTools: List<Tool>? = null
     var lastModel: String? = null
+    var lastParamOverrides: Map<String, String>? = null
 
-    override fun chat(messages: List<ChatMessage>, tools: List<Tool>, model: String): ModelResponse {
+    override fun chat(
+        messages: List<ChatMessage>,
+        tools: List<Tool>,
+        model: String,
+        paramOverrides: Map<String, String>,
+    ): ModelResponse {
         lastMessages = messages
         lastTools = tools
         lastModel = model
+        lastParamOverrides = paramOverrides
         return response
     }
 }
@@ -61,11 +68,26 @@ class PassthroughLlmAdapterTest {
         assertEquals(messages, fakeModelClient.lastMessages)
         assertEquals(tools, fakeModelClient.lastTools)
         assertEquals(GatewayModel.DEEPSEEK.id, fakeModelClient.lastModel)
+        // Default: no overrides forwarded.
+        assertEquals(emptyMap(), fakeModelClient.lastParamOverrides)
+    }
+
+    @Test
+    fun chatForwardsParamOverridesUntouchedToTheModelClient() {
+        val response = ModelResponse(text = "hello", toolCalls = emptyList())
+        val fakeModelClient = FakeModelClient(response)
+        val adapter = PassthroughLlmAdapter(fakeModelClient, FakeStreamingModelClient(Flux.empty()))
+        val overrides = mapOf("max_tokens" to "12288", "temperature" to "0.3")
+
+        adapter.chat(messages, tools, GatewayModel.DEEPSEEK, overrides)
+
+        // Blind passthrough: the map arrives at the transport layer exactly as given.
+        assertEquals(overrides, fakeModelClient.lastParamOverrides)
     }
 
     @Test
     fun chatStreamDelegatesToStreamingModelClientWithSameArgsAndReturnsSameFlux() {
-        val events = Flux.just(ModelStreamEvent.Done(fullText = "done"))
+        val events = Flux.just<ModelStreamEvent>(ModelStreamEvent.Done(fullText = "done"))
         val fakeModelClient = FakeModelClient(ModelResponse(text = null, toolCalls = emptyList()))
         val fakeStreamingClient = FakeStreamingModelClient(events)
         val adapter = PassthroughLlmAdapter(fakeModelClient, fakeStreamingClient)

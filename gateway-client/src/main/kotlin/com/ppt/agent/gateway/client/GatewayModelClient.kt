@@ -15,11 +15,17 @@ class GatewayModelClient(
     private val blockingStub: ModelGatewayGrpc.ModelGatewayBlockingStub,
 ) : ModelClient {
 
-    override fun chat(messages: List<ChatMessage>, tools: List<Tool>, model: String): ModelResponse {
+    override fun chat(
+        messages: List<ChatMessage>,
+        tools: List<Tool>,
+        model: String,
+        paramOverrides: Map<String, String>,
+    ): ModelResponse {
         val request = ChatRequest.newBuilder()
             .setCapability(model)
             .addAllMessages(messages.map(ClientMappers::toProtoMessage))
             .addAllTools(tools.map(ClientMappers::toProtoTool))
+            .putAllParamOverrides(paramOverrides)
             .build()
         return ClientMappers.toModelResponse(blockingStub.chat(request))
     }
