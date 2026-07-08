@@ -1,0 +1,21 @@
+Write the on-slide copy for this single slide.
+
+topic: {topic}
+audience: {audience}
+tone: {tone}
+narrative_arc: {narrative_arc}
+
+## Deck context (keep this slide consistent with the whole deck)
+{consistency_note}
+
+## Key terms (use these consistently; definitions are hints, not to be pasted verbatim)
+{key_terms_json}
+
+## This slide (from the outline — expand it into final copy)
+{slide_json}
+
+## Neighboring slides (outline only — for continuity, do NOT restate their content)
+previous: {prev_slide_hint}
+next: {next_slide_hint}
+
+Return ONLY the JSON object for this slide.

@@ -1,0 +1,10 @@
+Plan a {slide_count}-slide presentation outline.
+
+topic: {topic}
+brief: {brief}
+audience: {audience}
+
+Constraints:
+- slide_count: {slide_count} (exactly this many slides in slides[])
+- Deck must feel tailored to this audience, not a generic template with swapped keywords
+- Professional, clean, suitable for live presentation
