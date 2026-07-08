@@ -4,6 +4,7 @@ import com.ppt.agent.config.SpringAiModelClient
 import com.ppt.agent.gateway.server.health.ModelHealthProbe
 import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.ai.chat.model.ChatModel
+import org.springframework.ai.openai.OpenAiChatOptions
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
@@ -29,7 +30,10 @@ class GatewayConfig {
         meterRegistry: MeterRegistry,
     ): ProviderChatModels {
         val chatModels: Map<String, ChatModel> = props.models.mapValues { (_, entry) -> ChatModelFactory.create(entry) }
-        val clients: Map<String, SpringAiModelClient> = chatModels.mapValues { (_, model) -> SpringAiModelClient(model) }
+        // OpenAiChatModel casts a prompt's runtime options to OpenAiChatOptions,
+        // so the client must emit that concrete options subtype.
+        val clients: Map<String, SpringAiModelClient> =
+            chatModels.mapValues { (_, model) -> SpringAiModelClient(model) { OpenAiChatOptions.builder() } }
         return ProviderChatModels(clients = clients, chatModels = chatModels, meterRegistry = meterRegistry)
     }
 

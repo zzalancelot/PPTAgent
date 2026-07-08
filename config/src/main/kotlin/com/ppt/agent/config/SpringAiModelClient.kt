@@ -25,7 +25,18 @@ import org.springframework.ai.tool.definition.ToolDefinition
  * forwarded as *definitions only* with internal tool execution disabled, so the
  * caller owns the tool-execution loop.
  */
-class SpringAiModelClient(private val chatModel: ChatModel) : ModelClient {
+class SpringAiModelClient(
+    private val chatModel: ChatModel,
+    /**
+     * Supplies a fresh runtime-options builder per request. The concrete
+     * [ChatModel] implementation dictates the required options subtype: e.g.
+     * [org.springframework.ai.openai.OpenAiChatModel] casts the prompt's runtime
+     * options to `OpenAiChatOptions`, so an OpenAI-backed client must supply
+     * `OpenAiChatOptions.builder()` here. Defaults to the provider-neutral
+     * builder for tests/fakes.
+     */
+    private val optionsBuilder: () -> ToolCallingChatOptions.Builder<*> = { ToolCallingChatOptions.builder() },
+) : ModelClient {
 
     override fun chat(messages: List<ChatMessage>, tools: List<Tool>, model: String): ModelResponse =
         chat(messages, tools, model, emptyMap())
@@ -69,7 +80,7 @@ class SpringAiModelClient(private val chatModel: ChatModel) : ModelClient {
     }
 
     private fun buildOptions(model: String, params: Map<String, String>, tools: List<Tool>): ToolCallingChatOptions {
-        val builder = ToolCallingChatOptions.builder().model(model)
+        val builder = optionsBuilder().model(model)
         params["temperature"]?.toDoubleOrNull()?.let { builder.temperature(it) }
         params["max_tokens"]?.toIntOrNull()?.let { builder.maxTokens(it) }
         params["top_p"]?.toDoubleOrNull()?.let { builder.topP(it) }

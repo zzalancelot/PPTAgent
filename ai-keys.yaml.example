@@ -1,7 +1,0 @@
-# Copy to `ai-keys.yaml` (gitignored) or set the *_API_KEY env vars.
-# gateway-server imports this file via spring.config.import.
-ai:
-  keys:
-    deepseek: "sk-your-deepseek-key"
-    mimo: "sk-your-mimo-key"
-    minimax: "your-minimax-key"

@@ -4,7 +4,7 @@ build/
 
 ### Secrets — never commit real API keys ###
 ai-keys.yaml
-!ai-keys.yaml.example
+!ai-keys.yaml
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/

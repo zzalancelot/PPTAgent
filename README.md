@@ -17,13 +17,18 @@ raw provider model ids.
 | `gateway-api` | Protobuf contract + generated gRPC stubs. |
 | `gateway-server` | Standalone Boot app: gRPC on `:9090`, HTTP ops on `:9091`. |
 | `gateway-client` | `ModelClient` / `StreamingModelClient` implemented over gRPC. |
-| `app` | Smoke-test runner. Depends only on `framework` + `gateway-client`. |
+| `llm-adapter` | `LlmAdapter` seam above transport; `PassthroughLlmAdapter` delegates straight to `gateway-client` today, and is the hook for future model-capability compensation. |
+| `business` | PPT domain layer (`PptGenerationService`, placeholder only). Depends on `llm-adapter`, never on `gateway-client` / `gateway-api` directly. |
+| `app` | Smoke-test runner. Wires all layers and validates `business → llm-adapter → gateway-client`. |
 
 ```
 app → gateway-client → [gRPC] → gateway-server → config/Spring AI → provider
          ↑                              ↑
     framework                      gateway-api (proto)
 ```
+
+Business layering (new): `business → llm-adapter → gateway-client → gateway-server`.
+`business` never depends on `gateway-client` / `gateway-api`; it only ever calls `LlmAdapter`.
 
 ## Providers
 
@@ -96,8 +101,9 @@ In another terminal, run the smoke-test app:
 ./gradlew :app:bootRun
 ```
 
-The app selects `GatewayModel.DEEPSEEK`, calls it with
-`"Say hello in one sentence."`, logs the response, and runs a short streaming demo.
+The app calls `PptGenerationService.pingLlm(GatewayModel.DEEPSEEK)` — a `"ping"`
+message routed through `business → llm-adapter → gateway-client` — and logs the
+result.
 
 ## Health checks
 
@@ -119,7 +125,7 @@ curl -s localhost:9091/actuator/prometheus
 ## Build & test
 
 ```bash
-./gradlew build      # compiles all 6 modules and runs unit tests (no live key needed)
+./gradlew build      # compiles all 8 modules and runs unit tests (no live key needed)
 ```
 
 Tests use an in-memory `FakeChatModel`; none require network or an API key.
