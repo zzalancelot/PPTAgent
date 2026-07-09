@@ -35,7 +35,12 @@ class PptxExportService(
     private val renderTool: PptRenderTool = PptRenderToolImpl(),
 ) {
 
-    fun render(deck: SlideDeckContent, topic: String): PptxExportResult {
+    fun render(
+        deck: SlideDeckContent,
+        topic: String,
+        themeColors: List<String>,
+        sectionLayouts: Map<String, String> = emptyMap(),
+    ): PptxExportResult {
         val outputDir = Path.of(properties.dir).toAbsolutePath().normalize()
         try {
             Files.createDirectories(outputDir)
@@ -51,7 +56,7 @@ class PptxExportService(
 
         val tempJson = Files.createTempFile("ppt-deck-", ".json")
         try {
-            Files.writeString(tempJson, Json.toJson(deck), StandardCharsets.UTF_8)
+            Files.writeString(tempJson, deckJson(deck, themeColors, sectionLayouts), StandardCharsets.UTF_8)
             return when (
                 val result = renderTool.render(tempJson, outputPptx, RenderMode.PROGRAMMATIC)
             ) {
@@ -72,6 +77,18 @@ class PptxExportService(
         } finally {
             Files.deleteIfExists(tempJson)
         }
+    }
+
+    private fun deckJson(deck: SlideDeckContent, themeColors: List<String>, sectionLayouts: Map<String, String>): String {
+        val meta = linkedMapOf<String, Any?>(
+            "topic" to deck.meta.topic,
+            "slideCount" to deck.meta.slideCount,
+            "language" to deck.meta.language,
+            "modelsUsed" to deck.meta.modelsUsed,
+            "themeColors" to themeColors,
+            "sectionLayouts" to sectionLayouts,
+        )
+        return Json.toJson(mapOf("meta" to meta, "slides" to deck.slides))
     }
 
     fun resolveDownload(fileName: String): Path? {

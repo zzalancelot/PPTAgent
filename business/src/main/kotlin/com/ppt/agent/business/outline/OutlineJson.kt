@@ -38,7 +38,24 @@ data class OutlineSection(
     val title: String,
     val purpose: String,
     val slideRange: List<Int>,
+    /** Coarse per-chapter layout/typesetting seed. See outline_planner_system.txt. */
+    val layoutProfile: String,
 )
+
+object LayoutProfiles {
+    const val TUTORIAL_FRIENDLY = "tutorial_friendly"
+    const val EDITORIAL_LEFT = "editorial_left"
+    const val CENTERED_IMPACT = "centered_impact"
+    const val DENSE_REFERENCE = "dense_reference"
+    const val SPLIT_NARRATIVE = "split_narrative"
+    const val TIMELINE_FLOW = "timeline_flow"
+    const val PITCH_BOLD = "pitch_bold"
+
+    val ALL: Set<String> = setOf(
+        TUTORIAL_FRIENDLY, EDITORIAL_LEFT, CENTERED_IMPACT, DENSE_REFERENCE,
+        SPLIT_NARRATIVE, TIMELINE_FLOW, PITCH_BOLD,
+    )
+}
 
 data class OutlineSlide(
     val index: Int,

@@ -106,8 +106,8 @@ class OutlinePlannerTest {
 
         assertTrue(result is OutlineResult.Ok, "expected Ok after feedback, got $result")
         assertEquals(3, adapter.calls.size)
-        // Validation failures must NOT escalate tokens.
-        assertEquals(listOf("8192", "8192", "8192"), adapter.maxTokensPerCall())
+        // First two validation failures stay at baseline; 27-slide deck bumps before attempt 3.
+        assertEquals(listOf("8192", "8192", "12288"), adapter.maxTokensPerCall())
         // The third attempt must carry appended violation feedback.
         val thirdCallMessages = adapter.calls[2].messages
         val feedback = thirdCallMessages.filterIsInstance<ChatMessage.User>()
@@ -125,7 +125,7 @@ class OutlinePlannerTest {
         val errors = (result as OutlineResult.Err).errors
         assertTrue(errors.any { it is OutlineError.ValidationFailed }, errors.toString())
         assertTrue(errors.last() is OutlineError.ExhaustedRetries, errors.toString())
-        assertEquals(listOf("8192", "8192", "8192"), adapter.maxTokensPerCall())
+        assertEquals(listOf("8192", "8192", "12288"), adapter.maxTokensPerCall())
     }
 
     @Test

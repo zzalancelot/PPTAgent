@@ -22,6 +22,7 @@ class OutlineValidator {
         checkConsecutiveTypes(outline, violations)
         checkKeyTerms(outline, violations)
         checkKnownSlideTypes(outline, violations)
+        checkLayoutProfiles(outline, violations)
 
         return violations
     }
@@ -134,8 +135,55 @@ class OutlineValidator {
     // Bonus: slideType must be a known enum value
     private fun checkKnownSlideTypes(outline: OutlineJson, v: MutableList<String>) {
         for (slide in outline.slides) {
+            if (slide.slideType in LayoutProfiles.ALL && slide.slideType !in SlideTypes.ALL) {
+                v += "slide ${slide.index} slideType '${slide.slideType}' is a section layoutProfile name, not a valid slideType — " +
+                    "put '$slide.slideType' on section.layoutProfile only; use content/comparison/timeline/etc. for slides"
+                continue
+            }
             if (slide.slideType !in SlideTypes.ALL) {
                 v += "slide ${slide.index} has unknown slideType '${slide.slideType}'"
+            }
+        }
+    }
+
+    // Rules 9-11: layoutProfile validation
+    private fun checkLayoutProfiles(outline: OutlineJson, v: MutableList<String>) {
+        // Rule 9: valid enum
+        for (section in outline.sections) {
+            if (section.layoutProfile !in LayoutProfiles.ALL) {
+                v += "section '${section.id}' has unknown layoutProfile '${section.layoutProfile}'"
+            }
+        }
+
+        // Rule 10: deck-level diversity
+        val sectionCount = outline.sections.size
+        val distinctProfiles = outline.sections.map { it.layoutProfile }.toSet().size
+        val minRequired = when {
+            sectionCount >= 5 -> 3
+            sectionCount >= 3 -> 2
+            else -> 1
+        }
+        if (distinctProfiles < minRequired) {
+            v += "deck with $sectionCount sections must use at least $minRequired different layoutProfile values (found $distinctProfiles)"
+        }
+
+        // Rule 11: coherence with slide types
+        for (section in outline.sections) {
+            if (section.slideRange.size != 2) continue
+            val (start, end) = section.slideRange
+            val contentSlides = outline.slides.filter { slide ->
+                slide.index in start..end &&
+                    slide.slideType != SlideTypes.SECTION_DIVIDER &&
+                    slide.slideType != SlideTypes.AGENDA
+            }
+            val timelineCount = contentSlides.count { it.slideType == SlideTypes.TIMELINE }
+            val comparisonCount = contentSlides.count { it.slideType == SlideTypes.COMPARISON }
+
+            if (timelineCount >= 2 && section.layoutProfile !in setOf(LayoutProfiles.TIMELINE_FLOW, LayoutProfiles.SPLIT_NARRATIVE)) {
+                v += "section '${section.id}' has $timelineCount timeline slides but layoutProfile '${section.layoutProfile}' (prefer timeline_flow or split_narrative)"
+            }
+            if (comparisonCount >= 2 && section.layoutProfile !in setOf(LayoutProfiles.SPLIT_NARRATIVE, LayoutProfiles.EDITORIAL_LEFT)) {
+                v += "section '${section.id}' has $comparisonCount comparison slides but layoutProfile '${section.layoutProfile}' (prefer split_narrative or editorial_left)"
             }
         }
     }

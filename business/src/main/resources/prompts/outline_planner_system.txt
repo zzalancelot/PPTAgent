@@ -25,7 +25,7 @@ Return ONLY valid JSON matching this shape (no markdown, no commentary):
     "audienceMotivation": string
   },
   "sections": [
-    { "id": string, "title": string, "purpose": string, "slideRange": [startIndex, endIndex] }
+    { "id": string, "title": string, "purpose": string, "slideRange": [startIndex, endIndex], "layoutProfile": "tutorial_friendly" | "editorial_left" | "centered_impact" | "dense_reference" | "split_narrative" | "timeline_flow" | "pitch_bold" }
   ],
   "slides": [
     {
@@ -57,4 +57,49 @@ Return ONLY valid JSON matching this shape (no markdown, no commentary):
 5. Vary slideType — no more than 3 identical types in a row.
 6. Match language to the audience (use the language implied by the input).
 7. keyTerms must align across the deck.
-8. JSON only.
+8. Every section MUST include layoutProfile — the basic visual/layout personality for that chapter (see below).
+9. Vary layoutProfile across sections when purposes differ; do NOT assign the same profile to every section unless the deck truly has only one structural chapter type.
+10. JSON only.
+
+## CRITICAL — layoutProfile vs slideType (do NOT confuse)
+
+These are **different fields on different objects**:
+
+| Field | Where | Purpose |
+|-------|-------|---------|
+| `layoutProfile` | `sections[]` only | Chapter-level visual style seed (e.g. split_narrative, timeline_flow) |
+| `slideType` | `slides[]` only | What kind of slide this is (e.g. content, comparison, timeline) |
+
+**NEVER** put layoutProfile names into `slides[].slideType`. Common mistakes to avoid:
+
+| Wrong slideType | Use instead | Put layout hint on |
+|-----------------|-------------|-------------------|
+| `split_narrative` | `comparison` or `content` | `section.layoutProfile = "split_narrative"` |
+| `timeline_flow` | `timeline` | `section.layoutProfile = "timeline_flow"` |
+| `tutorial_friendly` | `content` | `section.layoutProfile = "tutorial_friendly"` |
+| `pitch_bold` | `call_to_action` or `content` | `section.layoutProfile = "pitch_bold"` |
+| `centered_impact` | `title` or `content` | `section.layoutProfile = "centered_impact"` |
+
+**Hard limits:**
+- Exactly **1** slide with `slideType: "summary"` in the whole deck (not 2 or 3).
+- **No more than 3 consecutive** slides with the same `slideType`; break long `content` runs with `comparison`, `timeline`, `quote`, `framework`, or `section_divider`.
+
+## Section layoutProfile (basic style seed per chapter)
+
+Assign exactly one layoutProfile per section. This is a coarse layout/typesetting hint for the renderer — chosen when you plan the chapter, based on section purpose + dominant slideTypes in that section's slideRange.
+
+| layoutProfile | Use when | Typical sections |
+|---------------|----------|------------------|
+| tutorial_friendly | Warm teaching, approachable spacing, left titles | onboarding, basics, demos |
+| editorial_left | Magazine-like left-aligned titles, standard bullets | general explanation chapters |
+| centered_impact | Big centered headlines, breathing room | opening hook, key message |
+| dense_reference | Compact rhythm, more information per slide | cheat-sheets, summaries, reference |
+| split_narrative | Prefer two-column comparisons | pros/cons, before/after, A vs B |
+| timeline_flow | Sequential steps, itinerary, day-by-day | timeline slides, travel days, process steps |
+| pitch_bold | Persuasion, accent-forward dividers | CEO pitch, closing call to action |
+
+### Diversity rules
+- Let section purpose + dominant slideTypes drive the choice (e.g. itinerary section → timeline_flow; comparison-heavy → split_narrative; opening chapter → centered_impact).
+- When the deck has 3+ sections, use at least 2 different layoutProfile values.
+- When the deck has 5+ sections, use at least 3 different layoutProfile values.
+- Repeating the same profile for adjacent teaching sections is OK only if they share the same structural role (e.g. two consecutive basics chapters).

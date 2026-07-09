@@ -1,6 +1,7 @@
 package com.ppt.agent.business.content
 
 import com.ppt.agent.business.outline.ConsistencyRules
+import com.ppt.agent.business.outline.LayoutProfiles
 import com.ppt.agent.business.outline.OutlineJson
 import com.ppt.agent.business.outline.OutlineMeta
 import com.ppt.agent.business.outline.OutlineSection
@@ -14,7 +15,7 @@ class ModelAssignmentPolicyTest {
     private fun outlineWithSections(vararg ids: String): OutlineJson = OutlineJson(
         meta = OutlineMeta("t", "a", ids.size, "en", "teaching", "clear", "one"),
         storyline = Storyline("h", "p", emptyList(), emptyList(), emptyList(), "m"),
-        sections = ids.map { OutlineSection(it, it, "purpose", listOf(1, 1)) },
+        sections = ids.map { OutlineSection(it, it, "purpose", listOf(1, 1), LayoutProfiles.EDITORIAL_LEFT) },
         slides = emptyList(),
         consistency = ConsistencyRules(emptyList(), emptyList(), emptyList(), emptyList(), ""),
     )

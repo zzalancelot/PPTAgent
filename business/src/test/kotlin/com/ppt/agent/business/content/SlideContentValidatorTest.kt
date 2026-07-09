@@ -1,6 +1,7 @@
 package com.ppt.agent.business.content
 
 import com.ppt.agent.business.outline.ConsistencyRules
+import com.ppt.agent.business.outline.LayoutProfiles
 import com.ppt.agent.business.outline.OutlineJson
 import com.ppt.agent.business.outline.OutlineMeta
 import com.ppt.agent.business.outline.OutlineSection
@@ -194,7 +195,7 @@ class SlideContentValidatorTest {
     private fun outlineWith(vararg slides: OutlineSlide): OutlineJson = OutlineJson(
         meta = OutlineMeta("t", "a", slides.size, "en", "teaching", "clear", "one"),
         storyline = Storyline("h", "p", emptyList(), emptyList(), emptyList(), "m"),
-        sections = listOf(OutlineSection("s1", "s1", "p", listOf(1, slides.size))),
+        sections = listOf(OutlineSection("s1", "s1", "p", listOf(1, slides.size), LayoutProfiles.EDITORIAL_LEFT)),
         slides = slides.toList(),
         consistency = ConsistencyRules(emptyList(), emptyList(), emptyList(), emptyList(), ""),
     )

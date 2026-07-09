@@ -79,8 +79,9 @@ class ThemeColorPickerImpl(
     /** True when the response looks incomplete / unparseable and should be retried. */
     private fun isTruncated(text: String?, parsed: Map<String, Any>?): Boolean {
         if (text.isNullOrBlank()) return true
+        // Json.parseFirstObject is already tolerant of leading/trailing noise (e.g. ``` fences).
+        // If it found a JSON object, treat it as complete even if extra characters follow.
         if (parsed == null) return true
-        if (!text.trim().endsWith("}")) return true
         return false
     }
 

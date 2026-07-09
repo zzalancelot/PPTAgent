@@ -12,6 +12,8 @@ import com.ppt.agent.business.outline.OutlineError
 import com.ppt.agent.business.outline.OutlineJson
 import com.ppt.agent.business.outline.OutlineResult
 import com.ppt.agent.business.content.SlideDeckContent
+import com.ppt.agent.business.theme.ThemeColorError
+import com.ppt.agent.business.theme.ThemeColorResult
 import com.ppt.agent.framework.GatewayModel
 import org.springframework.core.io.FileSystemResource
 import org.springframework.http.HttpHeaders
@@ -151,26 +153,12 @@ class PptApiController(
               ),
           )
         } else {
-          val pptxStart = System.nanoTime()
-          val export = pptxExportService.render(contentResult.deck, input.topic)
-          timing["pptx"] = elapsedMs(pptxStart)
-          when (export) {
-            is PptxExportResult.Ok ->
-                ResponseEntity.ok(
-                    okResponse(
-                        "pptx",
-                        input = input,
-                        outline = outline,
-                        content = contentResult.deck,
-                        timing = timing,
-                        modelsUsed = mapOf(
-                            "outline" to resolvedOutlineModel.id,
-                            "content" to resolvedContentModel.id,
-                        ),
-                        pptx = export.info.toResponse(),
-                    ),
-                )
-            is PptxExportResult.Err ->
+          val themeStart = System.nanoTime()
+          val themeResult = pptGenerationService.pickThemeColors(outline)
+          timing["theme"] = elapsedMs(themeStart)
+
+          when (themeResult) {
+            is ThemeColorResult.Err ->
                 ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(
                     PptRunResponse(
                         stage = "pptx",
@@ -178,10 +166,53 @@ class PptApiController(
                         input = input,
                         outline = outline,
                         content = contentResult.deck,
-                        errors = listOf(mapOf("type" to "pptx_render_failed", "message" to export.message)),
+                        errors = themeResult.errors.map { it.toMap() },
                         timingMs = timing,
                     ),
                 )
+            is ThemeColorResult.Ok -> {
+              val sectionLayouts = outline.sections.associate { it.id to it.layoutProfile }
+              val pptxStart = System.nanoTime()
+              val export = pptxExportService.render(
+                  contentResult.deck,
+                  input.topic,
+                  themeResult.palette.colors,
+                  sectionLayouts,
+              )
+              timing["pptx"] = elapsedMs(pptxStart)
+              when (export) {
+                is PptxExportResult.Ok ->
+                    ResponseEntity.ok(
+                        okResponse(
+                            "pptx",
+                            input = input,
+                            outline = outline,
+                            content = contentResult.deck,
+                            timing = timing,
+                            modelsUsed = mapOf(
+                                "outline" to resolvedOutlineModel.id,
+                                "content" to resolvedContentModel.id,
+                                "theme" to GatewayModel.DEEPSEEK_FLASH.id,
+                            ),
+                            pptx = export.info.toResponse(),
+                            themeColors = themeResult.palette.colors,
+                        ),
+                    )
+                is PptxExportResult.Err ->
+                    ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(
+                        PptRunResponse(
+                            stage = "pptx",
+                            status = "error",
+                            input = input,
+                            outline = outline,
+                            content = contentResult.deck,
+                            themeColors = themeResult.palette.colors,
+                            errors = listOf(mapOf("type" to "pptx_render_failed", "message" to export.message)),
+                            timingMs = timing,
+                        ),
+                    )
+              }
+            }
           }
         }
       }
@@ -223,6 +254,7 @@ class PptApiController(
       timing: Map<String, Long>,
       modelsUsed: Map<String, String> = emptyMap(),
       pptx: PptxFileResponse? = null,
+      themeColors: List<String>? = null,
   ): PptRunResponse =
       PptRunResponse(
           stage = stage,
@@ -231,6 +263,7 @@ class PptApiController(
           outline = outline,
           content = content,
           pptx = pptx,
+          themeColors = themeColors,
           modelsUsed = modelsUsed,
           timingMs = timing,
       )
@@ -268,6 +301,7 @@ data class PptRunResponse(
     val outline: OutlineJson? = null,
     val content: SlideDeckContent? = null,
     val pptx: PptxFileResponse? = null,
+    val themeColors: List<String>? = null,
     val modelsUsed: Map<String, String> = emptyMap(),
     val errors: List<Map<String, Any?>> = emptyList(),
     val timingMs: Map<String, Long> = emptyMap(),
@@ -303,4 +337,15 @@ private fun ContentError.toMap(): Map<String, Any?> =
           mapOf("type" to "slide_failed", "index" to index, "sectionId" to sectionId, "message" to message)
       is ContentError.PartialFailure ->
           mapOf("type" to "partial_failure", "failedIndices" to failedIndices, "message" to message)
+    }
+
+private fun ThemeColorError.toMap(): Map<String, Any?> =
+    when (this) {
+      is ThemeColorError.LlmFailure -> mapOf("type" to "theme_llm_failure", "message" to message)
+      is ThemeColorError.InvalidJson ->
+          mapOf("type" to "theme_invalid_json", "message" to message, "attempt" to attempt)
+      is ThemeColorError.ValidationFailed ->
+          mapOf("type" to "theme_validation_failed", "violations" to violations, "attempt" to attempt)
+      is ThemeColorError.ExhaustedRetries ->
+          mapOf("type" to "theme_exhausted_retries", "attempts" to attempts, "lastError" to lastError)
     }

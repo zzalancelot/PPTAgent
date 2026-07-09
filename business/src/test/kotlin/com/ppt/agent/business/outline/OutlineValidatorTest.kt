@@ -175,6 +175,38 @@ class OutlineValidatorTest {
     }
 
     @Test
+    fun rejectsLayoutProfileNameUsedAsSlideType() {
+        val outline = loadValid().let { base ->
+            val slides = base.slides.toMutableList()
+            slides[11] = slides[11].copy(slideType = "split_narrative")
+            base.copy(slides = slides)
+        }
+        val violations = validator.validate(outline, input)
+        assertTrue(violations.any { it.contains("layoutProfile name") }, violations.toString())
+    }
+
+    @Test
+    fun rejectsUnknownLayoutProfile() {
+        val outline = loadValid().let { base ->
+            val sections = base.sections.toMutableList()
+            sections[0] = sections[0].copy(layoutProfile = "neon_future")
+            base.copy(sections = sections)
+        }
+        val violations = validator.validate(outline, input)
+        assertTrue(violations.any { it.contains("unknown layoutProfile") }, violations.toString())
+    }
+
+    @Test
+    fun rejectsUniformLayoutProfilesWhenManySections() {
+        val outline = loadValid().let { base ->
+            val sections = base.sections.map { it.copy(layoutProfile = LayoutProfiles.EDITORIAL_LEFT) }
+            base.copy(sections = sections)
+        }
+        val violations = validator.validate(outline, input)
+        assertTrue(violations.any { it.contains("at least 3 different layoutProfile") }, violations.toString())
+    }
+
+    @Test
     fun collectsAllViolationsInsteadOfFailingFast() {
         val outline = loadValid().let {
             it.copy(

@@ -15,7 +15,11 @@ data class DeckMeta(
     val topic: String?,
     val slideCount: Int?,
     val language: String?,
-    val modelsUsed: Map<String, String>?,
+    val modelsUsed: Map<String, String>? = null,
+    /** Optional Morandi palette from ThemeColorPicker: [background, surface, accent, accentMuted, textPrimary]. */
+    val themeColors: List<String>? = null,
+    /** sectionId → layoutProfile (from OutlineSection). Optional. */
+    val sectionLayouts: Map<String, String>? = null,
 )
 
 data class SlideDocument(

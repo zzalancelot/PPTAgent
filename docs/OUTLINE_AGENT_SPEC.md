@@ -11,7 +11,7 @@ Default model: **`GatewayModel.DEEPSEEK`**.
 ## Pipeline Position
 
 ```
-PptInput → OutlinePlanner → OutlineJson → (future) SlideContentGenerator
+PptInput → OutlinePlanner → OutlineJson (sections carry layoutProfile) → SlideContentGenerator → theme colors → render
 ```
 
 ## Interface
@@ -172,6 +172,8 @@ data class OutlineSection(
     val title: String,
     val purpose: String,
     val slideRange: List<Int>,
+    /** Coarse per-chapter layout/typesetting seed for renderer diversity. */
+    val layoutProfile: String,
 )
 
 data class OutlineSlide(
@@ -201,6 +203,37 @@ data class KeyTerm(val term: String, val definitionHint: String)
 
 `title`, `agenda`, `section_divider`, `content`, `comparison`, `timeline`, `framework`, `case_study`, `code_or_demo`, `quote`, `summary`, `call_to_action`, `qa`
 
+### layoutProfile enum (per section)
+
+Each `OutlineSection` carries a **basic style seed** chosen at outline time. The renderer (or a future refiner) uses this to vary typesetting per chapter without a separate LLM call.
+
+| Value | Typical use |
+|-------|-------------|
+| `tutorial_friendly` | Warm teaching, approachable spacing |
+| `editorial_left` | Left-aligned editorial bullets |
+| `centered_impact` | Big centered headlines, opening chapters |
+| `dense_reference` | Compact rhythm, more info per slide |
+| `split_narrative` | Two-column comparisons |
+| `timeline_flow` | Sequential / itinerary / step-by-step |
+| `pitch_bold` | Persuasion, accent-forward closing |
+
+```kotlin
+object LayoutProfiles {
+    const val TUTORIAL_FRIENDLY = "tutorial_friendly"
+    const val EDITORIAL_LEFT = "editorial_left"
+    const val CENTERED_IMPACT = "centered_impact"
+    const val DENSE_REFERENCE = "dense_reference"
+    const val SPLIT_NARRATIVE = "split_narrative"
+    const val TIMELINE_FLOW = "timeline_flow"
+    const val PITCH_BOLD = "pitch_bold"
+    val ALL: Set<String> = setOf(...)
+}
+```
+
+**Diversity intent:** when planning sections, the LLM should vary `layoutProfile` based on section purpose and dominant `slideType`s — not assign one profile to the entire deck.
+
+**Future:** a optional `SectionStyleRefiner` may expand `layoutProfile` into full typography/spacing overrides after theme colors are picked. See `docs/SECTION_STYLE_SPEC.md` (deferred).
+
 ## Validation (`OutlineValidator`)
 
 Pure Kotlin. Collect all violations:
@@ -213,6 +246,9 @@ Pure Kotlin. Collect all violations:
 6. `content`-like slides: `bulletHints` size 2–5
 7. No more than 3 consecutive identical `slideType`
 8. `keyTerms` non-empty
+9. Every section has `layoutProfile` in `LayoutProfiles.ALL`
+10. Layout diversity: ≥3 sections → ≥2 distinct profiles; ≥5 sections → ≥3 distinct profiles
+11. Coherence: timeline-heavy sections (≥2 `timeline` slides) → `timeline_flow` or `split_narrative`; comparison-heavy (≥2 `comparison`) → `split_narrative` or `editorial_left`
 
 ## Tests
 

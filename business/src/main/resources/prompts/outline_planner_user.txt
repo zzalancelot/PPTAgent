@@ -8,3 +8,6 @@ Constraints:
 - slide_count: {slide_count} (exactly this many slides in slides[])
 - Deck must feel tailored to this audience, not a generic template with swapped keywords
 - Professional, clean, suitable for live presentation
+- Each section must have a layoutProfile that fits its purpose and slide mix; vary profiles across chapters for visual diversity
+- layoutProfile goes on sections[] ONLY; slideType on slides[] ONLY — never use split_narrative, timeline_flow, etc. as slideType
+- Exactly one summary slide; no more than 3 consecutive slides of the same slideType

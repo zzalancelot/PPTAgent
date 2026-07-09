@@ -79,7 +79,10 @@ class OutlinePlannerImpl(
 
             errors += OutlineError.ValidationFailed(violations, attempt)
             lastError = "ValidationFailed: ${violations.joinToString("; ")}"
-            // Do NOT bump tokens: append feedback and retry within the same budget.
+            // Large decks need more output tokens on later retries (context grows with feedback).
+            if (attempt >= 2 && input.slideCount >= 20) {
+                tokenIndex = (tokenIndex + 1).coerceAtMost(TOKEN_LADDER.lastIndex)
+            }
             messages = messages + ChatMessage.User(validationFeedback(violations))
         }
 
@@ -121,6 +124,14 @@ class OutlinePlannerImpl(
     private fun validationFeedback(violations: List<String>): String = buildString {
         appendLine("The previous outline JSON failed validation. Fix ALL of the following and return corrected JSON only (no commentary):")
         violations.forEach { appendLine("- $it") }
+        if (violations.any { it.contains("layoutProfile name") || it.contains("split_narrative") || it.contains("timeline_flow") }) {
+            appendLine()
+            appendLine("Reminder: layoutProfile (split_narrative, timeline_flow, etc.) belongs on sections[] only. slides[].slideType must be content, comparison, timeline, summary, etc.")
+        }
+        if (violations.any { it.contains("'summary'") || it.contains("consecutive") }) {
+            appendLine()
+            appendLine("Reminder: exactly 1 summary slide total; break long content runs with comparison/timeline/quote/section_divider.")
+        }
     }.trim()
 
     private fun loadPrompt(resource: String): String {
