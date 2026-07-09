@@ -1,0 +1,380 @@
+{
+  "meta": {
+    "language": "zh-CN",
+    "modelsUsed": {
+      "opening": "deepseek-flash",
+      "first_code": "deepseek-flash",
+      "variables": "deepseek-flash",
+      "lists": "deepseek-flash",
+      "dicts": "deepseek-flash",
+      "loops": "deepseek-flash",
+      "functions": "deepseek-flash",
+      "closing": "deepseek-flash"
+    },
+    "slideCount": 27,
+    "topic": "Python 入门 30 分钟"
+  },
+  "slides": [
+    {
+      "bodyText": null,
+      "bullets": [],
+      "index": 1,
+      "sectionId": "opening",
+      "slideType": "title",
+      "speakerNotes": null,
+      "subtitle": "零基础也能学会的编程第一课",
+      "title": "Python 入门 30 分钟"
+    },
+    {
+      "bodyText": null,
+      "bullets": [
+        "理解编程与 Python",
+        "变量 —— 贴了标签的盒子",
+        "列表与字典：一个接一个与带名字的盒子",
+        "循环 —— 让电脑替你重复任务",
+        "函数 —— 封装好的代码积木",
+        "小试牛刀：综合练习"
+      ],
+      "index": 2,
+      "sectionId": "opening",
+      "slideType": "agenda",
+      "speakerNotes": "在开始之前，让我们先看一眼今天的路线图。我们会一步步走过这些概念，从最基础的变量到最后自己写一个完整的小程序，每一个环节你都能亲手敲出代码。准备好了吗？",
+      "subtitle": null,
+      "title": "今日路线图"
+    },
+    {
+      "bodyText": null,
+      "bullets": [],
+      "index": 3,
+      "sectionId": "opening",
+      "slideType": "section_divider",
+      "speakerNotes": null,
+      "subtitle": "程序员是翻译官",
+      "title": "编程：与电脑对话的语言"
+    },
+    {
+      "bodyText": null,
+      "bullets": [
+        "编程 = 给电脑写一份任务清单",
+        "电脑会严格、重复地执行每一步",
+        "我们需要用它能懂的语言——Python"
+      ],
+      "index": 4,
+      "sectionId": "first_code",
+      "slideType": "content",
+      "speakerNotes": "想象一下，你要教朋友做一个三明治，你会列一个步骤清单。编程就是给电脑列这样的清单，只不过电脑需要我们使用它听得懂的语言，比如Python。",
+      "subtitle": null,
+      "title": "什么是编程"
+    },
+    {
+      "bodyText": null,
+      "bullets": [
+        "语法接近英语，像读句子一样自然",
+        "无数免费“代码积木”帮你快速解决任务",
+        "人工智能、数据分析的首选伙伴"
+      ],
+      "index": 5,
+      "sectionId": "first_code",
+      "slideType": "content",
+      "speakerNotes": "刚才我们用盒子、标签这些比喻理解了编程的基本思路。现在来看看为什么大家推荐 Python 作为入门语言——它读起来像英语，写起来像搭积木，而且现在最热的数据科学和人工智能也在用它。准备好了吗？那我们就写出第一行真正的 Python 代码吧。",
+      "subtitle": null,
+      "title": "为什么是 Python？"
+    },
+    {
+      "bodyText": null,
+      "bullets": [
+        "输入：print(\"Hello, Python!\")",
+        "回车，看结果 → 电脑对你说“Hello”了！",
+        "试试把引号里的文字换成你的名字，再运行一次"
+      ],
+      "index": 6,
+      "sectionId": "first_code",
+      "slideType": "code_or_demo",
+      "speakerNotes": "现在，让我们一起敲出第一行代码。输入 print(\"Hello, Python!\") 并回车——看，电脑回应你了！这就是编程的起点。再试试换成自己的名字，你已经在指挥电脑了。接下来我们学习如何像这样存储更多信息。",
+      "subtitle": "跟着我一起敲",
+      "title": "第一行代码：说“Hello”"
+    },
+    {
+      "bodyText": null,
+      "bullets": [],
+      "index": 7,
+      "sectionId": "variables",
+      "slideType": "section_divider",
+      "speakerNotes": "现在，我们要开始学习第一个核心概念：变量。你可以把它想象成一个个带标签的盒子，用来存放各种信息。",
+      "subtitle": "给数据贴标签",
+      "title": "第一部分：存储信息的盒子 —— 变量"
+    },
+    {
+      "bodyText": null,
+      "bullets": [
+        "就像一个有名字的盒子，用来存放东西",
+        "可以放进数据（数字、文字…），也能随时取出来",
+        "名字要遵守规则：不能以数字开头，习惯用英文"
+      ],
+      "index": 8,
+      "sectionId": "variables",
+      "slideType": "content",
+      "speakerNotes": "我们先来认识变量。你可以把它想象成一个贴了名字的盒子——你能往里面放任何东西，也能随时拿出来用。变量的名字就像盒子的标签，让我们知道里面存的是什么。不过要注意，编程里变量的名字不能以数字开头，而且通常用英文命名，这样代码更容易读。",
+      "subtitle": null,
+      "title": "什么是变量？"
+    },
+    {
+      "bodyText": null,
+      "bullets": [
+        "整数（int）：存数量，比如年龄、个数",
+        "小数（float）：存价格、身高、体重",
+        "文字（str）：存姓名、地址、任何文本",
+        "布尔（bool）：存“对/错”，就像开关一样"
+      ],
+      "index": 9,
+      "sectionId": "variables",
+      "slideType": "content",
+      "speakerNotes": "这三种是我们最常用的数据类型。布尔值就像开关，只有开或关。接下来，我们打开电脑，亲手定义这些变量，看看它们如何工作。",
+      "subtitle": null,
+      "title": "基本数据类型"
+    },
+    {
+      "bodyText": null,
+      "bullets": [
+        "name = \"小明\"",
+        "age = 10",
+        "height = 1.45",
+        "print(name, age, height)"
+      ],
+      "index": 10,
+      "sectionId": "variables",
+      "slideType": "code_or_demo",
+      "speakerNotes": "现在轮到你了！打开编辑器，把这几行代码敲进去，然后运行。你会发现，我们给三个贴了标签的盒子（变量）分别放入了文字、整数和小数，最后用 print 一次性把盒子里的内容都展示出来。",
+      "subtitle": "跟着输入，感受标签盒子的用法",
+      "title": "动手试试：定义变量"
+    },
+    {
+      "bodyText": null,
+      "bullets": [],
+      "index": 11,
+      "sectionId": "lists",
+      "slideType": "section_divider",
+      "speakerNotes": null,
+      "subtitle": "按顺序存放多个数据",
+      "title": "第二部分：一组盒子 —— 列表"
+    },
+    {
+      "bodyText": null,
+      "bullets": [
+        "用方括号 [ ] 创建一排盒子",
+        "元素用逗号分隔",
+        "每个盒子有位置编号（索引），从0开始"
+      ],
+      "index": 12,
+      "sectionId": "lists",
+      "slideType": "content",
+      "speakerNotes": "列表就像一排贴了标签的盒子，可以按顺序存放多个数据。比如水果列表：'苹果'在第0号盒子，'香蕉'在第1号盒子，'橙子'在第2号盒子。马上我们就亲手创建一个自己的列表。",
+      "subtitle": null,
+      "title": "认识列表"
+    },
+    {
+      "bodyText": null,
+      "bullets": [
+        "fruits = [\"苹果\", \"香蕉\", \"橙子\"]  ← 三个盒子排成一排",
+        "fruits[0] → \"苹果\"（第一个盒子，编号从0开始）",
+        "fruits[-1] → \"橙子\"（倒数第一个盒子）",
+        "len(fruits) → 3（盒子的总数）"
+      ],
+      "index": 13,
+      "sectionId": "lists",
+      "slideType": "code_or_demo",
+      "speakerNotes": "来看实际代码：我们创建了一个叫 fruits 的列表，里面放了三种水果。注意，列表的编号是从 0 开始的，所以 fruits[0] 拿到第一个。用负号可以倒着数，fruits[-1] 直接拿到最后一个。想知道一共有多少个？用 len() 函数就搞定了。",
+      "subtitle": "用数字编号从「一排盒子」中取出想要的内容",
+      "title": "创建列表并访问"
+    },
+    {
+      "bodyText": null,
+      "bullets": [
+        "添加元素：fruits.append(\"西瓜\")",
+        "修改元素：fruits[0] = \"草莓\"",
+        "删除元素：fruits.remove(\"香蕉\")"
+      ],
+      "index": 14,
+      "sectionId": "lists",
+      "slideType": "content",
+      "speakerNotes": "列表就像一排贴了数字标签的盒子。你可以随时在后面加一个新盒子（append），也可以根据编号改里面的东西，或者根据内容把某个盒子拿走（remove）。现在你已经会按数字找东西了，那如果想按名字找东西呢？这就是我们接下来要讲的——字典。",
+      "subtitle": null,
+      "title": "列表简单操作"
+    },
+    {
+      "bodyText": null,
+      "bullets": [],
+      "index": 15,
+      "sectionId": "dicts",
+      "slideType": "section_divider",
+      "speakerNotes": null,
+      "subtitle": "键值对结构",
+      "title": "扩展：带名字的盒子 —— 字典"
+    },
+    {
+      "bodyText": null,
+      "bullets": [
+        "用大括号 {} 包起来，像是一组带名字的盒子",
+        "每个盒子里都有两个东西：名字标签（键）和里面的信息（值）",
+        "用名字标签直接取出内容，不用记住第几个位置"
+      ],
+      "index": 16,
+      "sectionId": "dicts",
+      "slideType": "content",
+      "speakerNotes": "就像你的通讯录，每个联系人的名字就是键，电话号码就是值。你只要知道名字，就能直接找到号码，不需要从头翻到尾。",
+      "subtitle": null,
+      "title": "什么是字典？"
+    },
+    {
+      "bodyText": null,
+      "bullets": [
+        "scores = {\"小明\": 90, \"小红\": 85}",
+        "取值：print(scores[\"小明\"]) → 90",
+        "添加：scores[\"小刚\"] = 88",
+        "查看所有名字：scores.keys()"
+      ],
+      "index": 17,
+      "sectionId": "dicts",
+      "slideType": "code_or_demo",
+      "speakerNotes": "我们来亲手创建一个字典，就像制作一张班级成绩表。用方括号加名字就能快速查到分数，也能随时加入新同学。最后看看所有名字，就像翻看通讯录的标签。",
+      "subtitle": null,
+      "title": "创建并使用字典"
+    },
+    {
+      "bodyText": null,
+      "bullets": [],
+      "index": 18,
+      "sectionId": "loops",
+      "slideType": "section_divider",
+      "speakerNotes": null,
+      "subtitle": "让电脑不知疲倦地工作",
+      "title": "第三部分：重复的魔法 —— for 循环"
+    },
+    {
+      "bodyText": null,
+      "bullets": [
+        "不用为每个元素单独写代码——电脑自动重复",
+        "for 变量 in 列表：对每个元素执行缩进内的代码",
+        "缩进（空格）表示“属于循环”，不能省略"
+      ],
+      "index": 19,
+      "sectionId": "loops",
+      "slideType": "content",
+      "speakerNotes": "想象你要处理一百个水果的名字，如果一个个写代码会非常累。用循环，我们告诉电脑‘对每个水果，做同样的事’，它就会自动完成。注意缩进——它是告诉电脑哪些代码属于循环的关键。",
+      "subtitle": null,
+      "title": "为什么要循环？"
+    },
+    {
+      "bodyText": null,
+      "bullets": [
+        "for name, score in scores.items():",
+        "    print(name, \"的成绩是\", score)",
+        "观察输出：一行行自动打印"
+      ],
+      "index": 20,
+      "sectionId": "loops",
+      "slideType": "code_or_demo",
+      "speakerNotes": "看，我们用for循环遍历字典scores中的每一项，每次循环自动取出一个姓名和分数，然后打印出来。运行结果会一行行显示，非常整齐。",
+      "subtitle": null,
+      "title": "for 循环遍历列表"
+    },
+    {
+      "bodyText": null,
+      "bullets": [],
+      "index": 21,
+      "sectionId": "functions",
+      "slideType": "section_divider",
+      "speakerNotes": "现在，我们要学习最后一部分内容：函数。你可以把函数想象成一块块功能完整的代码积木，写一次就能反复使用。我们将看到如何用函数让代码更有条理。",
+      "subtitle": "一次编写，多次使用",
+      "title": "第四部分：代码积木 —— 函数"
+    },
+    {
+      "bodyText": null,
+      "bullets": [
+        "用 def 函数名(): 给代码积木贴上标签",
+        "积木里的代码要统一缩进，表示“这是一整块”",
+        "随时调用：写函数名 + 括号，一行搞定"
+      ],
+      "index": 22,
+      "sectionId": "functions",
+      "slideType": "content",
+      "speakerNotes": "想象你有一段常重复的代码，比如画一条分割线。把它装进一个叫“画线”的积木里，以后每次想用时，只需要喊一声“画线()”，电脑就会自动执行那一段代码。这就是函数。",
+      "subtitle": "把这些代码装进一个有名字的积木里",
+      "title": "什么是函数？"
+    },
+    {
+      "bodyText": null,
+      "bullets": [
+        "用 `def` 把代码打包成一块积木",
+        "给积木取名字：`say_hello`",
+        "缩进里面放要重复执行的代码",
+        "调用积木：`say_hello()` —— 想用几次用几次"
+      ],
+      "index": 23,
+      "sectionId": "functions",
+      "slideType": "code_or_demo",
+      "speakerNotes": "看，我们先用 `def` 定义了一个叫 `say_hello` 的函数，里面写了打招呼的代码。然后我们在下面调用它，程序就会执行里面的内容。你可以试试多写几次 `say_hello()`，它每次都会打印出问候。",
+      "subtitle": null,
+      "title": "定义并调用函数"
+    },
+    {
+      "bodyText": null,
+      "bullets": [
+        "参数：代码积木名称后的（变量），调用时填入具体的值",
+        "返回值：用 return 把处理结果送出，供其他地方使用",
+        "示例：def add(a, b): return a + b → 调用 add(3, 5) 得到 8"
+      ],
+      "index": 24,
+      "sectionId": "functions",
+      "slideType": "content",
+      "speakerNotes": "这个代码积木就像一台加工机器：把原料（参数）放进去，机器通过 return 把产品（返回值）交给你。让我们来看加法函数的例子。",
+      "subtitle": null,
+      "title": "带参数和返回值"
+    },
+    {
+      "bodyText": null,
+      "bullets": [
+        "定义带两个“输入”的函数：def add(a, b):",
+        "用 return 交出计算结果——a + b",
+        "调用函数并存入变量：result = add(3, 5)",
+        "打印 result，得到 8"
+      ],
+      "index": 25,
+      "sectionId": "functions",
+      "slideType": "code_or_demo",
+      "speakerNotes": "现在我们亲手写出一个带参数和返回值的函数。就像做加法，把两个数放进去，它自动算好结果交给你。试试在代码里输入这几行，看看效果！",
+      "subtitle": null,
+      "title": "练习：参数与返回值"
+    },
+    {
+      "bodyText": null,
+      "bullets": [
+        "变量 → 贴了标签的盒子，存放数据",
+        "列表 → 按顺序排列的一排盒子，用编号取物",
+        "字典 → 带名字的盒子，通过标签查找",
+        "循环 + 函数 → 自动重复任务 & 可重用的代码积木"
+      ],
+      "index": 26,
+      "sectionId": "closing",
+      "slideType": "summary",
+      "speakerNotes": "刚才我们亲手写出了带参数和返回值的函数，现在把这些知识串联起来。这些就是编程最基础、最常用的积木块，你已经掌握了。",
+      "subtitle": "用积木搭起的第一段代码",
+      "title": "今天你学会了什么？"
+    },
+    {
+      "bodyText": null,
+      "bullets": [
+        "修改今天的代码，编一个属于你自己的小程序",
+        "推荐资源：Codecademy Python 课程、菜鸟教程",
+        "记住：犯错是学习最快的方式——大胆试！",
+        "欢迎随时提问与交流"
+      ],
+      "index": 27,
+      "sectionId": "closing",
+      "slideType": "call_to_action",
+      "speakerNotes": "今天的只是起点。我鼓励大家回去后动手修改我们写的代码，哪怕改一个数字、换一句话，都是进步。推荐的资源和社区都能帮你继续前行。记住，每个程序员都是从错误中成长的。现在，开放问答环节，有什么想问的吗？",
+      "subtitle": "别停下，继续用代码创造更多有趣的东西！",
+      "title": "下一步做什么？"
+    }
+  ]
+}

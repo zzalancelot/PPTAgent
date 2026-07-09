@@ -1,0 +1,16 @@
+Pick a Morandi palette for this presentation outline.
+
+topic: {topic}
+audience: {audience}
+tone: {tone}
+narrative_arc: {narrative_arc}
+one_liner: {one_liner}
+language: {language}
+
+## Storyline
+{storyline_json}
+
+## Sections (structure only)
+{sections_json}
+
+Return ONLY the JSON object with a `colors` array of length 5.

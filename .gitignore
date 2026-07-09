@@ -4,7 +4,21 @@ build/
 
 ### Secrets — never commit real API keys ###
 ai-keys.yaml
-!ai-keys.yaml
+
+### OS / editor noise ###
+.DS_Store
+*.tsbuildinfo
+
+### Local run logs (manual smoke) ###
+docs/*.run.log
+
+### Pipeline intermediate JSON (smoke / API dumps — not source) ###
+docs/content-test-*.json
+docs/outline-test-response*.json
+
+### Generated / bundled PPTX (never commit) ###
+*.pptx
+
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/

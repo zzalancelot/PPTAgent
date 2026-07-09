@@ -1,0 +1,596 @@
+{
+  "meta": {
+    "topic": "Python 入门 30 分钟",
+    "audience": "没有编程经验、想快速了解 Python 能做什么的职场新人",
+    "slideCount": 27,
+    "language": "zh-CN",
+    "narrativeArc": "teaching",
+    "tone": "鼓励、清晰、实用",
+    "oneLiner": "30 分钟带职场新人从零开始体验 Python，建立继续自学的信心和路线图。"
+  },
+  "storyline": {
+    "hook": "你每天重复的 Excel 操作，Python 一行代码就能搞定——而且你 30 分钟后就能写出这行代码。",
+    "promise": "30 分钟后，你会亲手写出一个能用的 Python 小程序，并知道接下来怎么继续自学。",
+    "openingBeats": [
+      "Python 是什么？为什么职场新人必须了解？",
+      "今天的目标：亲手运行第一行 Python 代码",
+      "30 分钟路线图预览"
+    ],
+    "coreBeats": [
+      "零基础安装与运行环境（用在线平台，不用本地安装）",
+      "变量与数据类型：让电脑记住信息",
+      "条件与循环：让代码做判断、重复做事情",
+      "函数：把常用操作打包成工具",
+      "小实战：把前面学到的串起来写一个完整程序"
+    ],
+    "closingBeats": [
+      "总结今天掌握的能力",
+      "继续自学路线图：下一步学什么、去哪里学",
+      "鼓励与提问"
+    ],
+    "audienceMotivation": "让零基础职场新人感受到 Python 不恐怖、自己能学会，且马上能用在工作或生活中提高效率。"
+  },
+  "sections": [
+    {
+      "id": "opening",
+      "title": "开场与目标",
+      "purpose": "建立信任、明确目标、激发兴趣",
+      "slideRange": [
+        1,
+        4
+      ],
+      "layoutProfile": "centered_impact"
+    },
+    {
+      "id": "setup",
+      "title": "环境准备",
+      "purpose": "确保每个人都能运行 Python，降低入门门槛",
+      "slideRange": [
+        5,
+        8
+      ],
+      "layoutProfile": "tutorial_friendly"
+    },
+    {
+      "id": "basics",
+      "title": "变量与数据类型",
+      "purpose": "掌握 Python 最基础的数据存储与操作",
+      "slideRange": [
+        9,
+        13
+      ],
+      "layoutProfile": "editorial_left"
+    },
+    {
+      "id": "control",
+      "title": "条件与循环",
+      "purpose": "学会让代码根据条件做不同事情，并重复执行",
+      "slideRange": [
+        14,
+        18
+      ],
+      "layoutProfile": "dense_reference"
+    },
+    {
+      "id": "functions",
+      "title": "函数定义",
+      "purpose": "学会把代码打包成可复用的函数",
+      "slideRange": [
+        19,
+        22
+      ],
+      "layoutProfile": "tutorial_friendly"
+    },
+    {
+      "id": "project",
+      "title": "小实战",
+      "purpose": "综合运用前面所学，完成一个完整可运行的程序",
+      "slideRange": [
+        23,
+        25
+      ],
+      "layoutProfile": "split_narrative"
+    },
+    {
+      "id": "closing",
+      "title": "总结与下一步",
+      "purpose": "回顾收获、给出继续学习的路线图、鼓励行动",
+      "slideRange": [
+        26,
+        27
+      ],
+      "layoutProfile": "pitch_bold"
+    }
+  ],
+  "slides": [
+    {
+      "index": 1,
+      "sectionId": "opening",
+      "slideType": "title",
+      "title": "Python 入门 30 分钟",
+      "subtitleHint": "零基础也能写出第一个程序",
+      "intent": "开场吸引注意力，明确主题和时长",
+      "bulletHints": [
+        "完全不需要编程经验",
+        "30 分钟后你会亲手写出一个能运行的程序"
+      ],
+      "visualHint": "简洁标题页，Python 官方 logo 或代码片段背景",
+      "transition": null
+    },
+    {
+      "index": 2,
+      "sectionId": "opening",
+      "slideType": "content",
+      "title": "为什么职场新人要学 Python？",
+      "subtitleHint": "Python 不是程序员的专利",
+      "intent": "激发学习动机，建立共鸣",
+      "bulletHints": [
+        "自动处理 Excel、PDF、邮件等重复工作",
+        "数据分析与可视化，让报告更专业",
+        "全球最热门的职场技能之一，学习曲线平缓"
+      ],
+      "visualHint": "职场场景图标（Excel 表格、图表、邮件）",
+      "transition": "motivation"
+    },
+    {
+      "index": 3,
+      "sectionId": "opening",
+      "slideType": "agenda",
+      "title": "30 分钟路线图",
+      "subtitleHint": null,
+      "intent": "让听众知道今天要学什么，建立预期",
+      "bulletHints": [
+        "5 分钟：环境准备（在线平台，不用安装）",
+        "8 分钟：变量与数据类型",
+        "7 分钟：条件与循环",
+        "5 分钟：函数",
+        "5 分钟：小实战 + 总结路线图"
+      ],
+      "visualHint": "时间线或步骤图",
+      "transition": "接下来我们先解决第一个问题：去哪里写代码？"
+    },
+    {
+      "index": 4,
+      "sectionId": "opening",
+      "slideType": "content",
+      "title": "你今天会学到什么？",
+      "subtitleHint": "具体目标",
+      "intent": "明确学习成果，增强信心",
+      "bulletHints": [
+        "在浏览器里运行 Python，无需安装任何软件",
+        "用变量存储数字和文字，并做简单运算",
+        "用 if 判断和 for 循环控制程序流程",
+        "定义自己的函数，并调用它",
+        "综合以上，写一个完整的实用小程序"
+      ],
+      "visualHint": "每个目标旁边一个小勾选框（初始未勾选）",
+      "transition": "好，我们现在就开始——第一步：打开你的浏览器。"
+    },
+    {
+      "index": 5,
+      "sectionId": "setup",
+      "slideType": "section_divider",
+      "title": "第一步：环境准备",
+      "subtitleHint": "5 分钟，不用安装任何软件",
+      "intent": "进入新模块，降低安装恐惧",
+      "bulletHints": [
+        "推荐使用在线平台：Replit 或 Google Colab",
+        "打开浏览器，访问网址即可开始"
+      ],
+      "visualHint": "在线平台截图或浏览器图标",
+      "transition": "我们推荐使用 Replit，因为它最像专业开发环境，但完全在线。"
+    },
+    {
+      "index": 6,
+      "sectionId": "setup",
+      "slideType": "content",
+      "title": "打开 Replit，创建第一个项目",
+      "subtitleHint": "跟着我一步步来",
+      "intent": "指导听众完成注册和创建项目",
+      "bulletHints": [
+        "访问 replit.com，点击 'Start creating'",
+        "选择语言为 Python，命名项目（比如 'my_first_python'）",
+        "自动进入编辑器，左边是代码，右边是运行结果"
+      ],
+      "visualHint": "Replit 界面截图，标注关键区域",
+      "transition": "现在你的屏幕上应该有一个空白的编辑区。我们来写第一行代码。"
+    },
+    {
+      "index": 7,
+      "sectionId": "setup",
+      "slideType": "code_or_demo",
+      "title": "你的第一行 Python 代码",
+      "subtitleHint": "打印问候语",
+      "intent": "让听众亲手运行第一行代码，获得即时成就感",
+      "bulletHints": [
+        "在编辑器中输入：print('Hello, Python!')",
+        "点击 Run 按钮，看右边输出了什么",
+        "恭喜！你已经运行了第一个 Python 程序"
+      ],
+      "visualHint": "代码高亮 + 运行结果截图",
+      "transition": "这个 print 是 Python 最常用的输出命令。接下来我们看看 Python 怎么处理数据。"
+    },
+    {
+      "index": 8,
+      "sectionId": "setup",
+      "slideType": "content",
+      "title": "代码运行原理（极简版）",
+      "subtitleHint": "无需深究，但知道一点更好",
+      "intent": "用比喻解释代码执行流程，不增加认知负担",
+      "bulletHints": [
+        "Python 解释器从上到下逐行读取你的代码",
+        "每行代码会被翻译成计算机能执行的指令",
+        "结果会显示在输出区域"
+      ],
+      "visualHint": "简单流程图：代码 → 解释器 → 输出",
+      "transition": "现在我们来学第一个核心概念：变量。"
+    },
+    {
+      "index": 9,
+      "sectionId": "basics",
+      "slideType": "section_divider",
+      "title": "第二步：变量与数据类型",
+      "subtitleHint": "8 分钟，让电脑记住信息",
+      "intent": "进入新模块，聚焦基础",
+      "bulletHints": [
+        "变量就像贴了标签的盒子，可以存放数据",
+        "Python 有几种常用的数据类型"
+      ],
+      "visualHint": "盒子贴标签的插图",
+      "transition": "我们先看一个最简单的变量例子。"
+    },
+    {
+      "index": 10,
+      "sectionId": "basics",
+      "slideType": "content",
+      "title": "变量：给数据起个名字",
+      "subtitleHint": "用 = 赋值",
+      "intent": "讲解变量赋值的基本语法",
+      "bulletHints": [
+        "name = '张三'   # 字符串",
+        "age = 25         # 整数",
+        "height = 1.75   # 浮点数（小数）",
+        "print(name, age, height)  # 输出所有变量"
+      ],
+      "visualHint": "代码示例，变量名和值用颜色区分",
+      "transition": "Python 的变量不需要提前声明类型，它会自动识别。"
+    },
+    {
+      "index": 11,
+      "sectionId": "basics",
+      "slideType": "comparison",
+      "title": "常用数据类型对比",
+      "subtitleHint": "数字、文字、真假",
+      "intent": "清晰对比三种基本数据类型",
+      "bulletHints": [
+        "整数 (int): 1, 100, -5",
+        "浮点数 (float): 3.14, 0.5, -2.0",
+        "字符串 (str): 'Hello', 'Python'",
+        "布尔值 (bool): True, False"
+      ],
+      "visualHint": "表格：类型名 | 例子 | 说明",
+      "transition": "有了变量，我们可以做运算。"
+    },
+    {
+      "index": 12,
+      "sectionId": "basics",
+      "slideType": "content",
+      "title": "基本运算：让变量动起来",
+      "subtitleHint": "加减乘除、字符串拼接",
+      "intent": "展示变量参与运算",
+      "bulletHints": [
+        "a = 10; b = 3",
+        "print(a + b)  # 13",
+        "print(a * b)  # 30",
+        "print('Hello ' + 'World')  # 字符串拼接"
+      ],
+      "visualHint": "代码 + 结果并排显示",
+      "transition": "我们来做个小练习巩固一下。"
+    },
+    {
+      "index": 13,
+      "sectionId": "basics",
+      "slideType": "code_or_demo",
+      "title": "小练习：计算你的年龄秒数",
+      "subtitleHint": "动手试试",
+      "intent": "通过有趣的计算巩固变量和运算",
+      "bulletHints": [
+        "age = 25  # 改成你的年龄",
+        "seconds = age * 365 * 24 * 60 * 60",
+        "print('你已经活了大约', seconds, '秒')"
+      ],
+      "visualHint": "代码示例，运行结果示例",
+      "transition": "很好！现在你已经会用变量了。接下来我们让代码做判断。"
+    },
+    {
+      "index": 14,
+      "sectionId": "control",
+      "slideType": "section_divider",
+      "title": "第三步：条件与循环",
+      "subtitleHint": "7 分钟，让代码做决策和重复",
+      "intent": "进入新模块，强调控制流的重要性",
+      "bulletHints": [
+        "if 语句让代码根据条件执行不同操作",
+        "for 循环让代码重复执行"
+      ],
+      "visualHint": "分岔路和循环箭头的图标",
+      "transition": "先看条件判断。"
+    },
+    {
+      "index": 15,
+      "sectionId": "control",
+      "slideType": "content",
+      "title": "条件判断：if / elif / else",
+      "subtitleHint": "如果……那么……否则……",
+      "intent": "讲解条件判断语法",
+      "bulletHints": [
+        "score = 85",
+        "if score >= 90: print('优秀')",
+        "elif score >= 60: print('及格')",
+        "else: print('不及格')"
+      ],
+      "visualHint": "代码示例，缩进用颜色高亮",
+      "transition": "注意 Python 用缩进来表示代码块，这是它的特点。"
+    },
+    {
+      "index": 16,
+      "sectionId": "control",
+      "slideType": "content",
+      "title": "循环：for 循环",
+      "subtitleHint": "对列表中的每个元素做同样的事",
+      "intent": "讲解 for 循环基本用法",
+      "bulletHints": [
+        "for i in range(5): print(i)  # 输出 0 到 4",
+        "fruits = ['苹果', '香蕉', '橘子']",
+        "for fruit in fruits: print(fruit)"
+      ],
+      "visualHint": "代码示例，展示循环过程动画（可选）",
+      "transition": "循环配合条件可以解决很多实际问题。"
+    },
+    {
+      "index": 17,
+      "sectionId": "control",
+      "slideType": "code_or_demo",
+      "title": "小练习：猜数字游戏（部分）",
+      "subtitleHint": "综合条件与循环",
+      "intent": "通过猜数字练习条件循环组合",
+      "bulletHints": [
+        "secret = 7",
+        "guess = int(input('猜一个数字: '))",
+        "if guess == secret: print('猜对了！')",
+        "else: print('猜错了，再试试')"
+      ],
+      "visualHint": "代码示例，输入输出交互截图",
+      "transition": "这个程序只能猜一次，但加上循环就可以一直猜。我们后面会完善它。"
+    },
+    {
+      "index": 18,
+      "sectionId": "control",
+      "slideType": "content",
+      "title": "while 循环（可选）",
+      "subtitleHint": "当条件为真时一直执行",
+      "intent": "简要介绍 while 循环",
+      "bulletHints": [
+        "count = 0",
+        "while count < 3:",
+        "    print('重复第', count+1, '次')",
+        "    count = count + 1"
+      ],
+      "visualHint": "代码示例",
+      "transition": "掌握了条件和循环，你已经能写很多实用程序了。接下来我们学习如何组织代码。"
+    },
+    {
+      "index": 19,
+      "sectionId": "functions",
+      "slideType": "section_divider",
+      "title": "第四步：函数定义",
+      "subtitleHint": "5 分钟，把代码打包成工具",
+      "intent": "进入新模块，强调复用性",
+      "bulletHints": [
+        "函数是一段可重复使用的代码块",
+        "用 def 关键字定义函数"
+      ],
+      "visualHint": "工具箱图标",
+      "transition": "比如我们之前写的年龄秒数计算，可以封装成一个函数。"
+    },
+    {
+      "index": 20,
+      "sectionId": "functions",
+      "slideType": "content",
+      "title": "定义你的第一个函数",
+      "subtitleHint": "def 函数名():",
+      "intent": "讲解函数定义语法",
+      "bulletHints": [
+        "def greet(name):",
+        "    print('你好,', name)",
+        "greet('小明')  # 调用函数",
+        "greet('小红')"
+      ],
+      "visualHint": "代码示例，函数定义和调用用箭头连接",
+      "transition": "函数还可以有返回值。"
+    },
+    {
+      "index": 21,
+      "sectionId": "functions",
+      "slideType": "content",
+      "title": "带返回值的函数",
+      "subtitleHint": "用 return 返回结果",
+      "intent": "讲解 return 语句",
+      "bulletHints": [
+        "def add(a, b):",
+        "    return a + b",
+        "result = add(3, 5)",
+        "print(result)  # 8"
+      ],
+      "visualHint": "代码示例，返回值用箭头指向变量",
+      "transition": "我们来把之前的年龄秒数计算改写成函数。"
+    },
+    {
+      "index": 22,
+      "sectionId": "functions",
+      "slideType": "code_or_demo",
+      "title": "小练习：年龄秒数函数",
+      "subtitleHint": "复用你的代码",
+      "intent": "通过改写巩固函数定义",
+      "bulletHints": [
+        "def age_in_seconds(age):",
+        "    return age * 365 * 24 * 60 * 60",
+        "print(age_in_seconds(25))",
+        "print(age_in_seconds(30))"
+      ],
+      "visualHint": "代码示例，调用两次展示复用",
+      "transition": "太棒了！现在你已经掌握了 Python 的核心基础。我们来做一个综合实战。"
+    },
+    {
+      "index": 23,
+      "sectionId": "project",
+      "slideType": "section_divider",
+      "title": "第五步：综合小实战",
+      "subtitleHint": "5 分钟，写出一个完整程序",
+      "intent": "进入实战环节，调动积极性",
+      "bulletHints": [
+        "运用变量、条件、循环、函数",
+        "完成一个『猜数字』完整版"
+      ],
+      "visualHint": "猜数字游戏界面截图",
+      "transition": "这个程序会随机生成一个数字，让你一直猜直到猜对。"
+    },
+    {
+      "index": 24,
+      "sectionId": "project",
+      "slideType": "code_or_demo",
+      "title": "完整猜数字游戏代码",
+      "subtitleHint": "逐行讲解",
+      "intent": "展示完整代码并解释每一部分",
+      "bulletHints": [
+        "import random",
+        "secret = random.randint(1, 100)",
+        "while True:",
+        "    guess = int(input('猜一个 1-100 的数字: '))",
+        "    if guess < secret: print('太小了')"
+      ],
+      "visualHint": "完整代码高亮，关键部分用注释标注",
+      "transition": "现在请你在自己的 Replit 里输入这段代码并运行。"
+    },
+    {
+      "index": 25,
+      "sectionId": "project",
+      "slideType": "content",
+      "title": "运行结果与扩展想法",
+      "subtitleHint": "你做到了！",
+      "intent": "展示运行结果并鼓励扩展",
+      "bulletHints": [
+        "程序会提示『太小了』或『太大了』直到猜对",
+        "你可以增加猜的次数限制",
+        "你可以增加得分记录功能"
+      ],
+      "visualHint": "运行结果截图，旁边有扩展思路的箭头",
+      "transition": "恭喜你完成了第一个完整的 Python 程序！现在我们总结一下今天学到了什么。"
+    },
+    {
+      "index": 26,
+      "sectionId": "closing",
+      "slideType": "summary",
+      "title": "今天你学会了什么？",
+      "subtitleHint": "回顾要点",
+      "intent": "总结所学，强化记忆",
+      "bulletHints": [
+        "使用在线平台运行 Python",
+        "变量与三种基本数据类型",
+        "条件判断和循环控制",
+        "定义和调用函数",
+        "综合运用写了一个完整程序"
+      ],
+      "visualHint": "每个要点旁边一个小勾，与 slide 4 呼应",
+      "transition": "但更重要的是，你知道接下来该怎么继续了。"
+    },
+    {
+      "index": 27,
+      "sectionId": "closing",
+      "slideType": "call_to_action",
+      "title": "继续自学的路线图",
+      "subtitleHint": "下一步行动",
+      "intent": "给出清晰的后续学习路径，鼓励行动",
+      "bulletHints": [
+        "推荐免费资源：Python 官方教程、Codecademy、B站教程",
+        "下一个主题：列表与字典、文件读写、第三方库",
+        "小挑战：每天写一个小程序，比如自动整理文件夹",
+        "加入学习社群，互相督促"
+      ],
+      "visualHint": "路线图图标，资源名称带超链接样式",
+      "transition": null
+    }
+  ],
+  "consistency": {
+    "keyTerms": [
+      {
+        "term": "变量",
+        "definitionHint": "存储数据的命名容器"
+      },
+      {
+        "term": "数据类型",
+        "definitionHint": "数据的种类，如整数、字符串"
+      },
+      {
+        "term": "条件判断",
+        "definitionHint": "根据条件执行不同代码"
+      },
+      {
+        "term": "循环",
+        "definitionHint": "重复执行一段代码"
+      },
+      {
+        "term": "函数",
+        "definitionHint": "可复用的代码块"
+      },
+      {
+        "term": "print",
+        "definitionHint": "输出信息到屏幕"
+      },
+      {
+        "term": "def",
+        "definitionHint": "定义函数的关键字"
+      },
+      {
+        "term": "if/elif/else",
+        "definitionHint": "条件判断语句"
+      },
+      {
+        "term": "for/while",
+        "definitionHint": "循环语句"
+      },
+      {
+        "term": "return",
+        "definitionHint": "从函数返回结果"
+      }
+    ],
+    "forbiddenTerms": [
+      "面向对象",
+      "类",
+      "继承",
+      "异常处理",
+      "模块",
+      "pip",
+      "虚拟环境",
+      "列表推导式",
+      "lambda",
+      "装饰器"
+    ],
+    "preferredPhrases": [
+      "零基础",
+      "无需安装",
+      "在线平台",
+      "亲手写出",
+      "实用",
+      "小练习",
+      "下一步"
+    ],
+    "avoidPatterns": [
+      "避免出现复杂术语",
+      "避免长段落文字",
+      "避免在 bulletHints 中使用完整句子",
+      "避免出现需要编译或安装的指令"
+    ],
+    "differentiationNote": "本 deck 专为零基础职场新人设计，强调在线环境、即时反馈、小步快跑，避免任何系统安装或理论深度，与面向程序员的技术分享完全不同。"
+  }
+}
