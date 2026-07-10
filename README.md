@@ -10,7 +10,7 @@
 
 - JDK 21
 - Node.js 18+（仅前端）
-- DeepSeek API Key（主流程；MiMo / MiniMax 可选）
+- DeepSeek API Key（LLM可选，但是只测了Ds）
 
 ## 配置 API Key
 
