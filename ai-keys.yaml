@@ -1,0 +1,11 @@
+# Copy to `ai-keys.yaml` (gitignored) or set the *_API_KEY env vars.
+# gateway-server imports this file via spring.config.import.
+ai:
+  keys:
+    gemini: ""
+    openai: ""
+    anthropic: ""
+    ark: ""
+    deepseek: ""
+    minimax: ""
+    mimo: ""
