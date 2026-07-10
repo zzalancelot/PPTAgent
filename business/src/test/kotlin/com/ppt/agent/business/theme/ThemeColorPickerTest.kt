@@ -73,12 +73,12 @@ class ThemeColorPickerTest {
 
     @Test
     fun exhaustsRetriesAndReturnsErrWhenEveryResponseIsInvalid() {
-        val adapter = ScriptedLlmAdapter(List(3) { colorsJson(thinPalette) })
+        val adapter = ScriptedLlmAdapter(List(4) { colorsJson(thinPalette) })
 
         val result = ThemeColorPickerImpl(adapter).pick(outline(), model = GatewayModel.DEEPSEEK_FLASH)
 
         val err = assertIs<ThemeColorResult.Err>(result, "expected Err, got $result")
-        assertEquals(3, adapter.callCount)
+        assertEquals(4, adapter.callCount)
         assertIs<ThemeColorError.ExhaustedRetries>(err.errors.last())
     }
 

@@ -29,11 +29,21 @@ class GatewayConfig {
         props: GatewayCapabilitiesProperties,
         meterRegistry: MeterRegistry,
     ): ProviderChatModels {
-        val chatModels: Map<String, ChatModel> = props.models.mapValues { (_, entry) -> ChatModelFactory.create(entry) }
+        val bundles: Map<String, ProviderModelBundle> =
+            props.models.mapValues { (_, entry) -> ChatModelFactory.createBundle(entry) }
+        val chatModels: Map<String, ChatModel> = bundles.mapValues { (_, bundle) -> bundle.chatModel }
         // OpenAiChatModel casts a prompt's runtime options to OpenAiChatOptions,
-        // so the client must emit that concrete options subtype.
+        // so the client must emit that concrete options subtype. MiMo also needs
+        // max_tokens overrides mapped to maxCompletionTokens at request time.
         val clients: Map<String, SpringAiModelClient> =
-            chatModels.mapValues { (_, model) -> SpringAiModelClient(model) { OpenAiChatOptions.builder() } }
+            bundles.mapValues { (_, bundle) ->
+                SpringAiModelClient(
+                    bundle.chatModel,
+                    optionsBuilder = { OpenAiChatOptions.builder() },
+                    tokenLimitConfigurer = bundle.tokenLimitConfigurer,
+                    optionsCustomizer = bundle.optionsCustomizer,
+                )
+            }
         return ProviderChatModels(clients = clients, chatModels = chatModels, meterRegistry = meterRegistry)
     }
 

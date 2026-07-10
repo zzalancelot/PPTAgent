@@ -98,11 +98,16 @@ class OutlinePlannerImpl(
         return OutlineResult.Err(errors)
     }
 
-    /** True when the response looks incomplete / unparseable and should be retried with more tokens. */
+    /**
+     * Truncation / unparseable heuristic. If [Json.parseFirstObject] already
+     * extracted an object, do **not** require the raw text to end with `}` —
+     * models often append a trailing fence / commentary after valid JSON, and
+     * that false-positive burned whole retry budgets on MiMo.
+     * Mid-array truncation is caught separately via `slides.size < slideCount`.
+     */
     private fun isTruncated(text: String?, parsed: Map<String, Any>?): Boolean {
         if (text.isNullOrBlank()) return true
         if (parsed == null) return true
-        if (!text.trim().endsWith("}")) return true
         return false
     }
 
@@ -181,9 +186,9 @@ class OutlinePlannerImpl(
 
     companion object {
         const val MAX_ATTEMPTS = 3
-        const val MAX_ATTEMPTS_LARGE = 4
+        const val MAX_ATTEMPTS_LARGE = 5
         const val LARGE_DECK_SLIDE_COUNT = 25
-        val TOKEN_LADDER = listOf(8192, 12288, 16384)
+        val TOKEN_LADDER = listOf(16384, 24576, 32768, 32768, 32768)
 
         private const val SYSTEM_PROMPT = "/prompts/outline_planner_system.txt"
         private const val USER_PROMPT = "/prompts/outline_planner_user.txt"

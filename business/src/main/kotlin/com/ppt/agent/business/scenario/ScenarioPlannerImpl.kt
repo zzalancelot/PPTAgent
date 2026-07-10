@@ -8,9 +8,8 @@ import com.ppt.agent.llm.adapter.LlmAdapter
 import java.nio.charset.StandardCharsets
 
 /**
- * Default [ScenarioPlanner]. Mirrors [ThemeColorPickerImpl] retry shape:
- * max [MAX_ATTEMPTS] calls, flat `max_tokens` at [MAX_TOKENS], parse with
- * [Json.parseFirstObject], validate, retry with feedback on violation.
+ * Default [ScenarioPlanner]. Retry with a small token ladder — MiMo and similar
+ * providers may truncate verbose ScenarioBrief JSON at a flat 2k budget.
  */
 class ScenarioPlannerImpl(
     private val llmAdapter: LlmAdapter,
@@ -21,10 +20,12 @@ class ScenarioPlannerImpl(
         val errors = mutableListOf<ScenarioError>()
         var messages = initialMessages(input)
         var lastError = "no attempts made"
-        val overrides = mapOf("max_tokens" to MAX_TOKENS.toString())
+        var tokenIndex = 0
 
         repeat(MAX_ATTEMPTS) { i ->
             val attempt = i + 1
+            val maxTokens = TOKEN_LADDER[tokenIndex.coerceAtMost(TOKEN_LADDER.lastIndex)]
+            val overrides = mapOf("max_tokens" to maxTokens.toString())
 
             val response = try {
                 llmAdapter.chat(messages, emptyList(), model, overrides)
@@ -40,6 +41,7 @@ class ScenarioPlannerImpl(
             if (text.isNullOrBlank() || parsed == null) {
                 errors += ScenarioError.InvalidJson("truncated or unparseable response", attempt)
                 lastError = "InvalidJson: truncated or unparseable response at attempt $attempt"
+                tokenIndex++
                 return@repeat
             }
 
@@ -49,6 +51,7 @@ class ScenarioPlannerImpl(
                 val message = e.message ?: "could not map JSON to ScenarioBrief"
                 errors += ScenarioError.InvalidJson(message, attempt)
                 lastError = "InvalidJson: $message"
+                tokenIndex++
                 return@repeat
             }
 
@@ -96,8 +99,8 @@ class ScenarioPlannerImpl(
     }
 
     companion object {
-        const val MAX_ATTEMPTS = 3
-        const val MAX_TOKENS = 2048
+        const val MAX_ATTEMPTS = 4
+        val TOKEN_LADDER = listOf(4096, 8192, 12288, 16384)
 
         private const val SYSTEM_PROMPT = "/prompts/scenario_planner_system.txt"
         private const val USER_PROMPT = "/prompts/scenario_planner_user.txt"

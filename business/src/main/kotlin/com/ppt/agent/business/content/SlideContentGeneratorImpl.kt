@@ -191,11 +191,10 @@ class SlideContentGeneratorImpl(
         return if (next == assigned) null else next
     }
 
-    /** Truncation / parse-failure heuristics (identical to the outline planner). */
+    /** Truncation / parse-failure heuristics. Parsed object ⇒ not truncated. */
     private fun isTruncated(text: String?, parsed: Map<String, Any>?): Boolean {
         if (text.isNullOrBlank()) return true
         if (parsed == null) return true
-        if (!text.trim().endsWith("}")) return true
         return false
     }
 
@@ -291,10 +290,10 @@ class SlideContentGeneratorImpl(
     }
 
     companion object {
-        const val PRIMARY_ATTEMPTS = 3
+        const val PRIMARY_ATTEMPTS = 4
         const val FALLBACK_ATTEMPTS = 2
-        val PRIMARY_TOKEN_LADDER = listOf(4096, 6144, 8192)
-        val FALLBACK_TOKEN_LADDER = listOf(4096, 6144)
+        val PRIMARY_TOKEN_LADDER = listOf(8192, 12288, 16384, 24576)
+        val FALLBACK_TOKEN_LADDER = listOf(8192, 12288)
 
         private const val SYSTEM_PROMPT = "/prompts/slide_content_system.txt"
         private const val USER_PROMPT = "/prompts/slide_content_user.txt"

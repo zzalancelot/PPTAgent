@@ -14,10 +14,8 @@ import java.nio.charset.StandardCharsets
  * `OutlinePlannerImpl`'s retry shape.
  *
  * Retry policy (business layer only):
- *  - At most [MAX_ATTEMPTS] LLM calls (1 initial + up to 2 retries).
- *  - `max_tokens` is flat at [MAX_TOKENS] — a 5-entry color array is tiny, no
- *    token ladder needed.
- *  - On LLM failure / truncated / unparseable response: retry (same budget).
+ *  - At most [MAX_ATTEMPTS] LLM calls.
+ *  - On truncated / unparseable response: bump `max_tokens` via [TOKEN_LADDER].
  *  - On validation failure: append the violations as a `User` message and
  *    retry within the same budget, **without** bumping tokens.
  *  - All attempts failing yields `Err` ending in [ThemeColorError.ExhaustedRetries].
@@ -31,10 +29,12 @@ class ThemeColorPickerImpl(
         val errors = mutableListOf<ThemeColorError>()
         var messages = initialMessages(outline, stance)
         var lastError = "no attempts made"
-        val overrides = mapOf("max_tokens" to MAX_TOKENS.toString())
+        var tokenIndex = 0
 
         repeat(MAX_ATTEMPTS) { i ->
             val attempt = i + 1
+            val maxTokens = TOKEN_LADDER[tokenIndex.coerceAtMost(TOKEN_LADDER.lastIndex)]
+            val overrides = mapOf("max_tokens" to maxTokens.toString())
 
             val response = try {
                 llmAdapter.chat(messages, emptyList(), model, overrides)
@@ -50,6 +50,7 @@ class ThemeColorPickerImpl(
             if (isTruncated(text, parsed)) {
                 errors += ThemeColorError.InvalidJson("truncated or unparseable response", attempt)
                 lastError = "InvalidJson: truncated or unparseable response at attempt $attempt"
+                tokenIndex++
                 return@repeat
             }
 
@@ -59,6 +60,7 @@ class ThemeColorPickerImpl(
                 val message = e.message ?: "could not map JSON to a colors array"
                 errors += ThemeColorError.InvalidJson(message, attempt)
                 lastError = "InvalidJson: $message"
+                tokenIndex++
                 return@repeat
             }
 
@@ -132,8 +134,8 @@ class ThemeColorPickerImpl(
     private data class SectionSummary(val id: String, val title: String, val purpose: String)
 
     companion object {
-        const val MAX_ATTEMPTS = 3
-        const val MAX_TOKENS = 512
+        const val MAX_ATTEMPTS = 4
+        val TOKEN_LADDER = listOf(1024, 2048, 4096, 8192)
 
         private const val SYSTEM_PROMPT = "/prompts/theme_color_system.txt"
         private const val USER_PROMPT = "/prompts/theme_color_user.txt"

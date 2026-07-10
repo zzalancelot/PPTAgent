@@ -79,22 +79,22 @@ class OutlinePlannerTest {
 
         assertTrue(result is OutlineResult.Ok, "expected Ok, got $result")
         assertEquals(2, adapter.calls.size)
-        // Business layer decided the escalation: 8192 -> 12288.
-        assertEquals("8192", adapter.maxTokensPerCall()[0])
-        assertEquals("12288", adapter.maxTokensPerCall()[1])
+        // Business layer decided the escalation: 16384 -> 24576.
+        assertEquals("16384", adapter.maxTokensPerCall()[0])
+        assertEquals("24576", adapter.maxTokensPerCall()[1])
     }
 
     @Test
     fun threeTruncationsExhaustRetriesWithFullTokenLadder() {
-        val adapter = ScriptedLlmAdapter(List(4) { ok(truncatedJson()) })
+        val adapter = ScriptedLlmAdapter(List(5) { ok(truncatedJson()) })
 
         val result = OutlinePlannerImpl(adapter).plan(input, model = GatewayModel.DEEPSEEK)
 
         assertTrue(result is OutlineResult.Err, "expected Err, got $result")
         val errors = (result as OutlineResult.Err).errors
         assertTrue(errors.last() is OutlineError.ExhaustedRetries, errors.toString())
-        assertEquals(4, adapter.calls.size)
-        assertEquals(listOf("8192", "12288", "16384", "16384"), adapter.maxTokensPerCall())
+        assertEquals(5, adapter.calls.size)
+        assertEquals(listOf("16384", "24576", "32768", "32768", "32768"), adapter.maxTokensPerCall())
     }
 
     @Test
@@ -108,7 +108,7 @@ class OutlinePlannerTest {
         assertTrue(result is OutlineResult.Ok, "expected Ok after feedback, got $result")
         assertEquals(3, adapter.calls.size)
         // 27-slide deck bumps tokens after each validation failure.
-        assertEquals(listOf("8192", "12288", "16384"), adapter.maxTokensPerCall())
+        assertEquals(listOf("16384", "24576", "32768"), adapter.maxTokensPerCall())
         // The third attempt must carry appended violation feedback.
         val thirdCallMessages = adapter.calls[2].messages
         val feedback = thirdCallMessages.filterIsInstance<ChatMessage.User>()
@@ -118,7 +118,7 @@ class OutlinePlannerTest {
 
     @Test
     fun threeValidationFailuresExhaustRetries() {
-        val adapter = ScriptedLlmAdapter(List(4) { ok(validationFailingJson()) })
+        val adapter = ScriptedLlmAdapter(List(5) { ok(validationFailingJson()) })
 
         val result = OutlinePlannerImpl(adapter).plan(input, model = GatewayModel.DEEPSEEK)
 
@@ -126,7 +126,7 @@ class OutlinePlannerTest {
         val errors = (result as OutlineResult.Err).errors
         assertTrue(errors.any { it is OutlineError.ValidationFailed }, errors.toString())
         assertTrue(errors.last() is OutlineError.ExhaustedRetries, errors.toString())
-        assertEquals(listOf("8192", "12288", "16384", "16384"), adapter.maxTokensPerCall())
+        assertEquals(listOf("16384", "24576", "32768", "32768", "32768"), adapter.maxTokensPerCall())
     }
 
     @Test
@@ -138,7 +138,7 @@ class OutlinePlannerTest {
         assertTrue(result is OutlineResult.Ok, "expected Ok after transient failure, got $result")
         assertEquals(2, adapter.calls.size)
         // LlmFailure is not a truncation signal: tokens stay at baseline.
-        assertEquals(listOf("8192", "8192"), adapter.maxTokensPerCall())
+        assertEquals(listOf("16384", "16384"), adapter.maxTokensPerCall())
     }
 
     @Test
@@ -149,7 +149,7 @@ class OutlinePlannerTest {
 
         assertTrue(result is OutlineResult.Ok, "expected Ok, got $result")
         assertEquals(1, adapter.calls.size)
-        assertEquals("8192", adapter.maxTokensPerCall()[0])
+        assertEquals("16384", adapter.maxTokensPerCall()[0])
     }
 
     @Test
@@ -188,18 +188,18 @@ class OutlinePlannerTest {
             audienceFrame = "investors",
         )
         // valid-outline.json has narrativeArc=teaching, stance wants persuasion → mismatch → retry
-        val adapter = ScriptedLlmAdapter(listOf(ok(validJson()), ok(validJson()), ok(validJson())))
+        val adapter = ScriptedLlmAdapter(List(5) { ok(validJson()) })
 
         val result = OutlinePlannerImpl(adapter).plan(input, stance, GatewayModel.DEEPSEEK)
 
         // The narrativeArc mismatch causes validation feedback retries;
-        // since the fixture always returns "teaching" it exhausts retries (4 for 27 slides).
+        // since the fixture always returns "teaching" it exhausts retries (5 for 27 slides).
         assertTrue(result is OutlineResult.Err, "expected Err due to narrativeArc mismatch, got $result")
         val errors = (result as OutlineResult.Err).errors
         assertTrue(
             errors.any { it is OutlineError.ValidationFailed },
             "should have ValidationFailed with narrativeArc mismatch",
         )
-        assertEquals(4, adapter.calls.size)
+        assertEquals(5, adapter.calls.size)
     }
 }

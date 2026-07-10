@@ -35,8 +35,9 @@ gateway:
     timeout: 8s
     cache-ttl: 15s
     probe-prompt: ping
-  # Each entry is an OpenAI-compatible endpoint. base-url must NOT include the
-  # trailing /v1 (the client appends /v1/chat/completions). Verify model ids and
+  # Each entry is an OpenAI-compatible endpoint. Spring AI 2.0 appends
+  # `/chat/completions` to base-url (NOT `/v1/chat/completions`). DeepSeek accepts
+  # both; MiMo requires `/v1` — set `params.api_root: v1`. Verify model ids and
   # base URLs against each provider's current docs.
   models:
     deepseek:
@@ -66,8 +67,11 @@ gateway:
       model: mimo-v2.5-pro
       api-key: ${ai.keys.mimo:${MIMO_API_KEY:}}
       params:
+        api_root: v1
+        use_max_completion_tokens: "true"
+        thinking: disabled
         temperature: "0.7"
-        max_tokens: "4096"
+        max_tokens: "32768"
     minimax:
       base-url: https://api.minimax.io
       model: MiniMax-M2

@@ -151,11 +151,11 @@ class SlideContentGeneratorTest {
         }
 
         val result = SlideContentGeneratorImpl(adapter).generate(input, outline(), modelPool = ModelPool.MULTI)
-        assertEquals(3, adapter.callsByKey["2|deepseek"], "should exhaust 3 attempts on DEEPSEEK")
+        assertEquals(4, adapter.callsByKey["2|deepseek"], "should exhaust 4 attempts on DEEPSEEK")
         assertEquals(1, adapter.callsByKey["2|mimo"], "should succeed on first MIMO fallback attempt")
         // Token ladder on the primary model, then reset on the fallback model.
-        assertEquals(listOf("4096", "6144", "8192"), adapter.tokensByKey["2|deepseek"]!!.toList())
-        assertEquals(listOf("4096"), adapter.tokensByKey["2|mimo"]!!.toList())
+        assertEquals(listOf("8192", "12288", "16384", "24576"), adapter.tokensByKey["2|deepseek"]!!.toList())
+        assertEquals(listOf("8192"), adapter.tokensByKey["2|mimo"]!!.toList())
     }
 
     @Test
@@ -175,8 +175,8 @@ class SlideContentGeneratorTest {
         assertEquals("setup", slideFailed.sectionId)
         val partial = errors.filterIsInstance<ContentError.PartialFailure>().firstOrNull()
         assertTrue(partial != null && partial.failedIndices.contains(5), "expected PartialFailure listing slide 5: $errors")
-        // 3 attempts on assigned MIMO, then 2 on the MINIMAX fallback.
-        assertEquals(3, adapter.callsByKey["5|mimo"])
+        // 4 attempts on assigned MIMO, then 2 on the MINIMAX fallback.
+        assertEquals(4, adapter.callsByKey["5|mimo"])
         assertEquals(2, adapter.callsByKey["5|minimax"])
     }
 
@@ -192,7 +192,7 @@ class SlideContentGeneratorTest {
         assertTrue(result is ContentResult.Ok, "expected Ok after transient error, got $result")
         assertEquals(2, adapter.callsByKey["3|deepseek"])
         // Exception is not a truncation signal → tokens stay at baseline for both attempts.
-        assertEquals(listOf("4096", "4096"), adapter.tokensByKey["3|deepseek"]!!.toList())
+        assertEquals(listOf("8192", "8192"), adapter.tokensByKey["3|deepseek"]!!.toList())
     }
 
     @Test
@@ -208,6 +208,6 @@ class SlideContentGeneratorTest {
         assertTrue(result is ContentResult.Ok, "expected Ok after validation retry, got $result")
         assertEquals(2, adapter.callsByKey["4|deepseek"], "should retry once after thin content fails validation")
         // Validation failures append feedback and retry WITHOUT bumping tokens.
-        assertEquals(listOf("4096", "4096"), adapter.tokensByKey["4|deepseek"]!!.toList())
+        assertEquals(listOf("8192", "8192"), adapter.tokensByKey["4|deepseek"]!!.toList())
     }
 }

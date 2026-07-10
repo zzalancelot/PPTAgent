@@ -148,12 +148,12 @@ class ScenarioPlannerTest {
 
     @Test
     fun exhaustsRetriesAndReturnsErrWhenEveryResponseIsInvalid() {
-        val adapter = ScriptedLlmAdapter(List(3) { tooFewScenariosJson() })
+        val adapter = ScriptedLlmAdapter(List(4) { tooFewScenariosJson() })
 
         val result = ScenarioPlannerImpl(adapter).infer(input)
 
         val err = assertIs<ScenarioResult.Err>(result, "expected Err, got $result")
-        assertEquals(3, adapter.callCount)
+        assertEquals(4, adapter.callCount)
         assertIs<ScenarioError.ExhaustedRetries>(err.errors.last())
     }
 

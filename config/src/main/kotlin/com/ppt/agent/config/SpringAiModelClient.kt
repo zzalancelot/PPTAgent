@@ -36,6 +36,16 @@ class SpringAiModelClient(
      * builder for tests/fakes.
      */
     private val optionsBuilder: () -> ToolCallingChatOptions.Builder<*> = { ToolCallingChatOptions.builder() },
+    /**
+     * Applies per-request token limits. MiMo expects `max_completion_tokens` on
+     * OpenAiChatOptions; most providers use [ToolCallingChatOptions.Builder.maxTokens].
+     * Gateway wires the concrete mapper so this module stays provider-agnostic.
+     */
+    private val tokenLimitConfigurer: (ToolCallingChatOptions.Builder<*>, Int) -> Unit = { builder, limit ->
+        builder.maxTokens(limit)
+    },
+    /** Optional per-provider tweaks (e.g. MiMo `thinking: disabled` on every request). */
+    private val optionsCustomizer: (ToolCallingChatOptions.Builder<*>) -> Unit = {},
 ) : ModelClient {
 
     override fun chat(
@@ -79,9 +89,10 @@ class SpringAiModelClient(
     private fun buildOptions(model: String, params: Map<String, String>, tools: List<Tool>): ToolCallingChatOptions {
         val builder = optionsBuilder().model(model)
         params["temperature"]?.toDoubleOrNull()?.let { builder.temperature(it) }
-        params["max_tokens"]?.toIntOrNull()?.let { builder.maxTokens(it) }
+        params["max_tokens"]?.toIntOrNull()?.let { limit -> tokenLimitConfigurer(builder, limit) }
         params["top_p"]?.toDoubleOrNull()?.let { builder.topP(it) }
         params["top_k"]?.toIntOrNull()?.let { builder.topK(it) }
+        optionsCustomizer(builder)
         if (tools.isNotEmpty()) {
             builder.toolCallbacks(tools.map(::toToolCallback))
         }
