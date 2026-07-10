@@ -89,7 +89,7 @@
 一致 ≠ 千篇一律。多样性在多个维度上被显式引入：
 
 - **叙事弧随输入变**：`narrativeArc` 由 topic + audience 推断——Python 教学是 `teaching`、Rust 说服 CEO 是 `persuasion`、京都行程是 `itinerary`，语气与结构随之不同。
-- **13 种 `slideType`**：title / agenda / section_divider / content / comparison / timeline / framework / case_study / code_or_demo / quote / summary / call_to_action / qa；大纲规则要求「连续不超过 3 个同类型」。
+- **多种 `slideType`**：大纲规则要求「连续不超过 3 个同类型」。
 - **版式随类型映射**：`SlideLayoutMapper` 把 slideType 映射到 TITLE / BULLETS / TWO_COLUMN / BODY_TEXT 等 7 种版式，comparison 走双栏、code_or_demo 走等宽正文，视觉上不重样。
 - **分节分配不同模型**：`ModelAssignmentPolicy` 按节轮转分配模型，天然引入措辞风格的细微差异（同时也分摊压力）。
 - **内容由 intent + bulletHints 扩写**：每页 prompt 要求「在 hint 基础上加一层（定义 / 例子 / 为什么重要 / 常见坑）」，而非照抄 hint，避免模板腔。
@@ -97,6 +97,8 @@
 ---
 
 ## 5. 成本与时延实测（5 套 demo × 2 版）
+
+>此处使用DeepSeek-v4进行测试，调试+整体开发总共消耗￥8.29CNY
 
 ### 5.1 测试方法（严格对齐题面）
 
@@ -160,77 +162,110 @@
 
 ## 6. 遇到的问题和取舍
 
-| 遇到的问题 / 权衡                                 | 处理                                                                                        |
-|--------------------------------------------|-------------------------------------------------------------------------------------------|
-| **大纲一次生成 27 页 → token被截断**                 | 加 `TOKEN_LADDER`（8192→12288→16384）+ 截断检测（结尾非 `}` / 页数 < 请求数）。在一次请求后检查是否被截断，如果被截断，则自动升档重试。 |
-| **逐页串行太慢**                                 | 改并行，`Semaphore` 限流 8 路（`MAX_PARALLEL_SLIDES`），content 从数分钟降到 ~34s。                        |
-| **单页偶发格式错 / 校验不过**                         | 分层重试：主模型 3 次（升 token），再换 1 个备选模型 2 次；校验失败把违规项回灌 prompt 重试。                                |
+| 遇到的问题 / 权衡                       | 处理                                                                                        |
+|----------------------------------|-------------------------------------------------------------------------------------------|
+| **大纲一次性生成，单次JSO过长导致token被截断**    | 加 `TOKEN_LADDER`（8192→12288→16384）+ 截断检测（结尾非 `}` / 页数 < 请求数）。在一次请求后检查是否被截断，如果被截断，则自动升档重试。 |
+| **单页偶发格式错 / 校验不过**               | 分层重试：主模型 3 次（升 token），再换 1 个备选模型 2 次；校验失败把违规项回灌 prompt 重试。                                |
 | **scenario / theme 小 JSON 偶发截断** | 大纲链路已加 token 阶梯；scenario、theme 仍仅 3 次重试且无升档，benchmark 中 4/10 首次失败、重试后 10/10 成功。后续应对齐 outline 的截断检测 + token ladder。 |
-| **renderer 与 business 循环依赖风险**             | 把 renderer 做成**零业务依赖的独立工具模块**（仅 framework + POI），DTO 用容忍式可空字段解析，`app` 负责组装。               |
-| **美观版未接 TEMPLATE 母版** | `PptxExportService` 仍固定 `PROGRAMMATIC`；美观版差异目前来自 **pro 全链路文案**，而非设计母版。TEMPLATE 模式已在 renderer 模块就绪，待 app 层切换。 |
+| **renderer 与 business 循环依赖风险**   | 把 renderer 做成**零业务依赖的独立工具模块**（仅 framework + POI），DTO 用容忍式可空字段解析，`app` 负责组装。               |
+| **美观版未接 TEMPLATE 母版**            | `PptxExportService` 仍固定 `PROGRAMMATIC`；美观版差异目前来自 **pro 全链路文案**，而非设计母版。TEMPLATE 模式已在 renderer 模块就绪，待 app 层切换。 |
 
 ---
 
 ## 7. AI 协作复盘
 
-本项目由「人定方案 + 多个编码 Agent 分段实现」的模式推进，人始终握着架构与验收权。
+协作模式可以概括成：**人定方向与验收标准 → 写成英文 spec / prompt 交给编码 Agent 分段落地 → 人用代码、测试、实跑验收，必要时推翻或回滚**。AI 加速实现，但不替代判断。
+
+### 人提出、与 AI 讨论后采纳的
+- **分层网关架构**（`framework` / gateway / `business` 隔离，`GatewayModel` 枚举选模型）：人定边界，AI 补齐实现细节；换 provider 只改 YAML，业务层不碰 SDK。
+- **「一套而非一堆」靠大纲契约**：先一次 LLM 产出整套大纲 + `consistency`，再并行扩写逐页；人坚持叙事线优先于「每页各自好看」。
+- **风格切换 = 全链路重生成**：早期 AI 倾向「只换主题色 / 保留旧大纲」；人明确要求 restyle 必须按新 stance 重规划大纲 → content → theme → pptx，并写成 `docs/SCENARIO_FULL_REGEN_PROMPT.md` 交给 Agent 改。
+- **交付物按题面验收**：公开开发集 5 主题 × 两版、实测表进 `DESIGN.md`、demo pptx 入库；人要求「不编造未测数据」，AI 负责跑 benchmark 与填表。
 
 ### AI 提的、照做了
-- **分层网关架构**（framework / gateway / business 隔离，枚举选模型）：AI 提出，判断合理（换模型零改动、职责清晰），采纳。
-- **双档模型策略**（pro 管大纲、flash 管逐页）：AI 建议，符合成本直觉，采纳。
-- **renderer 双模式**（PROGRAMMATIC + TEMPLATE）：AI 提出，兼顾「快」与「可换母版美化」，采纳。
-- **并行 + 信号量限流**、**token 阶梯重试**：AI 提出的工程细节，直接落地。
+- **双档模型策略**（pro 管大纲、flash 管逐页）：符合成本 / 时延直觉，落地为 Trade-off 版默认配置。
+- **renderer 双模式**（PROGRAMMATIC + TEMPLATE）：兼顾「快出图」与「可换母版」；当前导出仍以 PROGRAMMATIC 为主。
+- **并行 + 信号量限流**、**outline 的 token 阶梯重试**：工程细节直接落地，显著压低 content 阶段 wall time。
+- **前端 bug 清单 → 英文修复 prompt**：人先让 AI 审计前端问题，再整理成 `docs/FRONTEND_BUGFIX_PROMPT.md` 交给编码 Agent，避免口头需求漂移。
 
 ### AI 提的、被推翻 / 修正
-- **renderer 一开始想直接接进 business**（造成循环依赖）：推翻，改为**独立工具模块**，DTO 容错解析，由 app 组装。
-- **模板模式最初没把 `deck-template.pptx` 入库**（只在 build 目录）：推翻「运行时生成」的隐式做法，要求生成脚本 + 二进制入库，验收时明确检查。
-- **validator 的边缘页型覆盖不全**（title/section_divider subtitle、call_to_action bullet 未强校验）：识别为缺口，标注为后续补齐，而非当成「已完成」放过。
+- **renderer 想直接挂进 business**：会造成循环依赖；推翻为独立工具模块，由 `app` 组装。
+- **模板只生成在 build 目录、不入库**：推翻「运行时隐式生成」；要求脚本 + 二进制可复现。
+- **风格切换只改配色 / 保留旧 outline**：产品上不够；推翻为 stance 驱动的全链路 regen（见上）。
 
 ### AI 跑偏、被拽回来的具体例子
-1. **密度升级用旧数据自证**：Agent 声称「内容更丰富了」，但拿来展示的 `content-test-python-intro-deck.json` 是**升级前**生成的（多是 3 条短 bullet）。识破后明确：旧 JSON 只能测 renderer，必须**重跑 stage=content** 才算验证密度，避免被「看起来完成了」骗过。
-2. **服务「启动成功」但进程被回收**：Agent 报告 dev stack 起来了、health 全绿，但那是在 Agent 终端里跑的，会话一结束进程即被回收。拽回来：脚本改用 `nohup`+`disown` 脱离，并明确告知用户需在**本机终端**执行才能常驻。
-3. **脚本带 CRLF 直接报 `env: bash\r`**、**误用 macOS 没有的 `setsid`**：AI 生成的脚本在本机跑不起来，逐个定位换行符 / 命令兼容性问题后修复。
+1. **用旧数据自证「内容更丰富了」**：Agent 拿升级前的 `content-test-*.json` 当证据。拽回来：旧 JSON 只能测 renderer，密度必须以**重跑 `stage=content`** 为准。
+2. **「服务启动成功」但进程已死**：Agent 终端里 `bootRun` / health 全绿，会话结束进程被回收；或 `dev-up` 与后续 curl 拆成两次会话，中间服务已 DOWN。拽回来：`nohup`+`disown`、长任务与启动放同一会话、并提醒用户在本机终端常驻。
+3. **脚本 CRLF / 误用 `setsid`**：本机直接跑挂；人定位换行符与 macOS 兼容性后修。
+4. **restyle 反序列化翻车**：Jackson 无法构造 `OutlineJson`，前端表现为「风格切换失败」。人要求先定位根因再改：Controller 改 Gson 手工解析，并补解析单测。
+5. **提交前审查与「面试官视角」冒烟**：人把代码拉到新路径 `TestCode/PPTAgent`、只配 DeepSeek key，要求按 README 跑京都冒烟；AI 按「clone 后第一次跑」路径验收，而不是在开发机上假设环境永远在线。
 
 ### 对 AI 输出做的核验 / 兜底
-- **每段验收对照 spec 勾选 acceptance criteria**，不看「Agent 说完成了」，看代码 + 测试 + 实跑。
-- **跑测试**：`:renderer:test` / `:business:test` / `:app:test` + `./gradlew build` 必须全绿。
-- **CLI / API 实跑冒烟**：两种渲染模式各生成一份 pptx 对比；`stage=pptx` 落盘 + 下载链路实测。
-- **招聘题面 10 套 benchmark**：`scripts/exam-benchmark.sh` 对 `docs/exam-fixtures/` 全量跑通，失败用例自动/手动重试直至 10/10，结果写入 `docs/benchmark-results.jsonl` 与 `docs/demos/`。
-- **对数据保持怀疑**：区分「实测」与「待测」；成本在 token 未回传前标注为粗算。
+- **对照 spec / acceptance criteria**，不看「Agent 说完成了」。
+- **单元测试必绿**：`:renderer:test` / `:business:test` / `:app:test`（必要时 `./gradlew build`）。
+- **端到端实跑**：`stage=pptx` 落盘；题面 5×2 benchmark（`scripts/exam-benchmark.sh`）失败则重试直至 10/10，产物进 `docs/demos/`。
+- **成本与时延只填实测**：token 未回传则标注粗算，不编造。
+- **改坏就回滚**：MiMo 通路整段 `git restore` + 删临时产物，避免半成品污染主分支。
+- **交作业前再扫一遍已知缺口**（不读本文件时的独立 review）：UI 默认 `deepseek` 与 README 的 pro+flash 不一致、scenario/theme 无 token 阶梯、restyle 硬编码模型等——记入风险，不假装已修。
 
 ---
 
-## 8. 本轮开发与测试总结（至 2026-07-10）
+## 8. 交付与测试结论（至 2026-07-10）
 
-### 8.1 系统能力概览
+### 8.1 系统能力
 
-已完成题面核心链路：**JSON → 27 页叙事连贯 pptx**，含大纲规划、场景推断、逐页文案、主题色、程序化渲染；前端可表单输入 / 预览 / 下载；支持按场景标签 **全链路 restyle 重生成**。
+题面核心链路已通：**JSON → 27 页叙事连贯 `.pptx`**（parse → outline ∥ scenarios → content → theme → render）；前端可输入 / 预览 / 下载；支持按场景 **全链路 restyle**。主流程实测以 **DeepSeek pro + flash（Trade-off）** 与 **全 pro（美观版）** 为准。
 
-### 8.2 关键工程修复（测试前完成）
+### 8.2 关键工程修复（benchmark 前）
 
-| 问题 | 修复 |
+| 问题 | 处理 |
 |------|------|
-| `/v1/ppt/restyle` Jackson 无法反序列化 `OutlineJson` | Controller 改 Gson 手工解析 |
-| restyle 与首跑模型池不一致（mimo/minimax 404） | 主流程统一 `deepseek` 系列 |
-| 大纲 `truncated_output` / `bulletHints` 超标 / 连续 content | `OutlinePlannerImpl` 截断检测、hint 裁剪、大 deck 加 attempts |
-| 风格切换应重塑叙事而非只换色 | restyle = 新 stance → 新 outline → content → theme → pptx |
+| `/v1/ppt/restyle` Jackson 反序列化失败 | Controller 改 Gson 手工解析 |
+| restyle / 首跑模型池不一致（mimo/minimax 404） | 主流程收敛到 DeepSeek 系列 |
+| 大纲截断 / `bulletHints` 超标 / 连续同类型 | `OutlinePlannerImpl` 升档重试、hint 裁剪、大 deck 加 attempts |
+| 风格切换应重塑叙事 | restyle = stance → 新 outline → content → theme → pptx |
+| MiMo 通路尝试后效果差 | **整段回滚**，不纳入交付默认路径 |
 
-### 8.3 测试结论（对齐招聘题面）
+### 8.3 对齐题面的验收结论
 
-- **交付物完整性**：代码 + README（待与题面 README 要求对齐）+ 本 `DESIGN.md` + **10 个 demo pptx** ✅
-- **速度**：Trade-off 均值 ~4.6 min/套，美观版 ~7.7 min/套，均远低于 30 min 上限 ✅
-- **成本**：粗算 Trade-off ~$0.06、美观 ~$0.12/套，远低于 $10 上限 ✅
-- **美观度**：程序化渲染 + LLM 主题色 + 13 种 slideType 版式映射；美观版 pro 文案明显更饱满（未上 TEMPLATE 母版，仍有提升空间）
-- **稳定性**：首次批量 7/10 成功，3 例为小 JSON 阶段偶发截断，重试后 **10/10**；生产环境需加固 scenario/theme 重试策略
+| 维度 | 结论 |
+|------|------|
+| 交付物 | 代码 + README + 本决策日志 + `docs/demos/` 两版各 5 套 pptx |
+| 速度 | Trade-off 最长 ~7.5 min，美观版最长 ~11.9 min，均 < 30 min |
+| 成本 | 粗算 ~$0.06 / ~$0.12 每套，均 ≪ $10 |
+| 稳定性 | 批量首次约 7/10，scenario/theme 偶发截断，重试后 10/10；已知缺口见 §6 |
+| 面试官视角冒烟 | 新 clone + 仅配 DeepSeek key，京都 `stage=pptx`（pro+flash）HTTP 200、27 页落盘 |
 
-### 8.4 复现命令
+### 8.4 怎么复现（优先前端）
+
+**推荐路径：一键起服务 → 浏览器填表生成。**
 
 ```bash
-./scripts/dev-up.sh
-./scripts/exam-benchmark.sh all          # 约 50–90 min，写 docs/benchmark-results.jsonl
-# 单版：./scripts/exam-benchmark.sh tradeoff
-# 单条：
-curl -s -X POST 'http://127.0.0.1:8080/v1/ppt/run?stage=pptx&outlineModel=deepseek-pro&contentModel=deepseek-flash' \
-  -H 'Content-Type: application/json' \
-  --data-binary @docs/exam-fixtures/01-python-intro.json
+cp ai-keys.yaml.example ai-keys.yaml   # 填入 DeepSeek key
+./scripts/dev-up.sh                    # gateway + app + 前端
+./scripts/dev-status.sh                # 可选：确认三端 UP
 ```
+
+浏览器打开 http://127.0.0.1:5173 ：
+
+1. 填入 `topic` / `brief` / `audience`（可参考 `docs/exam-fixtures/` 五个公开题）
+2. 默认阶段为 **pptx**，点生成，等待大纲 → 文案 → 下载按钮出现
+3. 需要换风格时：选场景标签 → 「按此风格重新生成」
+4. 停止：`./scripts/dev-down.sh`
+
+已生成的两版 demo 也可直接打开：`docs/demos/tradeoff/`、`docs/demos/beauty/`。
+
+**可选：命令行（无 UI / 批跑 / 对齐 README 的 pro+flash 时）**
+
+```bash
+# 单条 Trade-off（pro 大纲 + flash 逐页）
+curl -s -X POST \
+  'http://127.0.0.1:8080/v1/ppt/run?stage=pptx&outlineModel=deepseek-pro&contentModel=deepseek-flash' \
+  -H 'Content-Type: application/json' \
+  --data-binary @docs/exam-fixtures/05-kyoto-weekend.json
+
+# 批量 5 主题 × 2 版（约 1–2 小时）
+./scripts/exam-benchmark.sh all
+```
+
+> 说明：前端默认传单一 `model=deepseek`；若要与 benchmark / README 完全一致的 pro+flash，请用上面的 curl，或在 debug 模式里指定模型（若界面已开放）。
