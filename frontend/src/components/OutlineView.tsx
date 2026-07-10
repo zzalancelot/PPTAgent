@@ -119,6 +119,9 @@ export default function OutlineView({ outline }: { outline: OutlineJson }) {
                   <Tag>
                     {s.slideRange[0]}–{s.slideRange[1]}
                   </Tag>
+                  {s.layoutProfile ? (
+                    <Tag color="cyan">{s.layoutProfile}</Tag>
+                  ) : null}
                 </Space>
                 <Text type="secondary">{s.purpose}</Text>
               </Space>

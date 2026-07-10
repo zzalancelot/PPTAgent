@@ -51,7 +51,7 @@ class ThemeColorPickerTest {
     fun returnsParsedPaletteOnValidJson() {
         val adapter = ScriptedLlmAdapter(listOf(colorsJson(validPalette)))
 
-        val result = ThemeColorPickerImpl(adapter).pick(outline(), GatewayModel.DEEPSEEK_FLASH)
+        val result = ThemeColorPickerImpl(adapter).pick(outline(), model = GatewayModel.DEEPSEEK_FLASH)
 
         val ok = assertIs<ThemeColorResult.Ok>(result, "expected Ok, got $result")
         assertEquals(validPalette, ok.palette.colors)
@@ -62,7 +62,7 @@ class ThemeColorPickerTest {
     fun retriesOnceWhenFirstResponseHasFourColorsAndSecondHasFive() {
         val adapter = ScriptedLlmAdapter(listOf(colorsJson(thinPalette), colorsJson(validPalette)))
 
-        val result = ThemeColorPickerImpl(adapter).pick(outline(), GatewayModel.DEEPSEEK_FLASH)
+        val result = ThemeColorPickerImpl(adapter).pick(outline(), model = GatewayModel.DEEPSEEK_FLASH)
 
         val ok = assertIs<ThemeColorResult.Ok>(result, "expected Ok after one retry, got $result")
         assertEquals(validPalette, ok.palette.colors)
@@ -75,7 +75,7 @@ class ThemeColorPickerTest {
     fun exhaustsRetriesAndReturnsErrWhenEveryResponseIsInvalid() {
         val adapter = ScriptedLlmAdapter(List(3) { colorsJson(thinPalette) })
 
-        val result = ThemeColorPickerImpl(adapter).pick(outline(), GatewayModel.DEEPSEEK_FLASH)
+        val result = ThemeColorPickerImpl(adapter).pick(outline(), model = GatewayModel.DEEPSEEK_FLASH)
 
         val err = assertIs<ThemeColorResult.Err>(result, "expected Err, got $result")
         assertEquals(3, adapter.callCount)
@@ -86,7 +86,7 @@ class ThemeColorPickerTest {
     fun malformedJsonIsRetried() {
         val adapter = ScriptedLlmAdapter(listOf("not json at all", colorsJson(validPalette)))
 
-        val result = ThemeColorPickerImpl(adapter).pick(outline(), GatewayModel.DEEPSEEK_FLASH)
+        val result = ThemeColorPickerImpl(adapter).pick(outline(), model = GatewayModel.DEEPSEEK_FLASH)
 
         val ok = assertIs<ThemeColorResult.Ok>(result, "expected Ok after retry, got $result")
         assertEquals(validPalette, ok.palette.colors)

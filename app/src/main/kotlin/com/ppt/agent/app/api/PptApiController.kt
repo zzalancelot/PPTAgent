@@ -12,9 +12,16 @@ import com.ppt.agent.business.outline.OutlineError
 import com.ppt.agent.business.outline.OutlineJson
 import com.ppt.agent.business.outline.OutlineResult
 import com.ppt.agent.business.content.SlideDeckContent
+import com.ppt.agent.business.scenario.DeckStance
+import com.ppt.agent.business.scenario.DeckStanceResolver
+import com.ppt.agent.business.scenario.PresentationScenario
+import com.ppt.agent.business.scenario.ScenarioBrief
+import com.ppt.agent.business.scenario.ScenarioError
+import com.ppt.agent.business.scenario.ScenarioResult
 import com.ppt.agent.business.theme.ThemeColorError
 import com.ppt.agent.business.theme.ThemeColorResult
 import com.ppt.agent.framework.GatewayModel
+import com.ppt.agent.framework.Json
 import org.springframework.core.io.FileSystemResource
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -27,6 +34,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.util.concurrent.Executors
 
 /**
  * Manual verification HTTP API for the PPT pipeline (parse → outline → content).
@@ -78,8 +86,8 @@ class PptApiController(
         stage.lowercase().also {
           require(it in STAGES) { "Unknown stage '$stage'. Use one of: ${STAGES.joinToString()}" }
         }
-    val resolvedOutlineModel = resolveModel(outlineModel ?: model ?: GatewayModel.DEEPSEEK_PRO.id)
-    val resolvedContentModel = resolveModel(contentModel ?: model ?: GatewayModel.DEEPSEEK_FLASH.id)
+    val resolvedOutlineModel = resolveModel(outlineModel ?: model ?: GatewayModel.DEEPSEEK.id)
+    val resolvedContentModel = resolveModel(contentModel ?: model ?: GatewayModel.DEEPSEEK.id)
     val timing = linkedMapOf<String, Long>()
 
     val parseStart = System.nanoTime()
@@ -103,8 +111,29 @@ class PptApiController(
     }
 
     val outlineStart = System.nanoTime()
-    val outlineResult = pptGenerationService.planOutline(input, resolvedOutlineModel)
-    timing["outline"] = elapsedMs(outlineStart)
+    val outlineResult: OutlineResult
+    val scenarioResult: ScenarioResult?
+
+    if (normalizedStage == "pptx") {
+      // Run outline and scenarios in parallel for pptx stage
+      val parallelExecutor = Executors.newFixedThreadPool(2)
+      val outlineFuture = parallelExecutor.submit<OutlineResult> {
+        pptGenerationService.planOutline(input, model = resolvedOutlineModel)
+      }
+      val scenarioFuture = parallelExecutor.submit<ScenarioResult> {
+        pptGenerationService.inferScenarios(input, resolvedOutlineModel)
+      }
+      // Await BOTH futures before shutting down the executor
+      outlineResult = outlineFuture.get()
+      scenarioResult = scenarioFuture.get()
+      parallelExecutor.shutdown()
+      timing["outline"] = elapsedMs(outlineStart)
+      timing["scenarios"] = elapsedMs(outlineStart)
+    } else {
+      outlineResult = pptGenerationService.planOutline(input, model = resolvedOutlineModel)
+      timing["outline"] = elapsedMs(outlineStart)
+      scenarioResult = null
+    }
 
     if (outlineResult is OutlineResult.Err) {
       return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(
@@ -131,9 +160,27 @@ class PptApiController(
       )
     }
 
+    // Fail fast if scenario inference failed on pptx stage
+    if (scenarioResult is ScenarioResult.Err) {
+      return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(
+          PptRunResponse(
+              stage = "pptx",
+              status = "error",
+              input = input,
+              outline = outline,
+              errors = scenarioResult.errors.map { it.toMap() },
+              timingMs = timing,
+          ),
+      )
+    }
+
+    // Resolve stance from scenario brief
+    val scenarioBrief = (scenarioResult as? ScenarioResult.Ok)?.brief
+    val stance = scenarioBrief?.let { DeckStanceResolver.resolve(it) }
+
     val contentStart = System.nanoTime()
     val contentResult =
-        pptGenerationService.generateContent(input, outline, listOf(resolvedContentModel))
+        pptGenerationService.generateContent(input, outline, stance, listOf(resolvedContentModel))
     timing["content"] = elapsedMs(contentStart)
 
   return when (contentResult) {
@@ -154,7 +201,7 @@ class PptApiController(
           )
         } else {
           val themeStart = System.nanoTime()
-          val themeResult = pptGenerationService.pickThemeColors(outline)
+          val themeResult = pptGenerationService.pickThemeColors(outline, stance, resolvedContentModel)
           timing["theme"] = elapsedMs(themeStart)
 
           when (themeResult) {
@@ -192,10 +239,12 @@ class PptApiController(
                             modelsUsed = mapOf(
                                 "outline" to resolvedOutlineModel.id,
                                 "content" to resolvedContentModel.id,
-                                "theme" to GatewayModel.DEEPSEEK_FLASH.id,
+                                "theme" to resolvedContentModel.id,
                             ),
                             pptx = export.info.toResponse(),
                             themeColors = themeResult.palette.colors,
+                            scenarios = scenarioBrief?.scenarios,
+                            deckStance = stance,
                         ),
                     )
                 is PptxExportResult.Err ->
@@ -230,6 +279,173 @@ class PptApiController(
     }
   }
 
+  /**
+   * Full pipeline regeneration under a different scenario/stance.
+   * Runs: resolve stance → planOutline(input, stance) → generateContent → pickThemeColors → render pptx.
+   * The new outline may differ in section titles, structure, and layoutProfile from the first generation.
+   */
+  @PostMapping("/restyle", consumes = [MediaType.APPLICATION_JSON_VALUE])
+  fun restyle(@RequestBody json: String): ResponseEntity<PptRunResponse> {
+    val timing = linkedMapOf<String, Long>()
+    val request =
+        try {
+          Json.fromJson(json, PptRestyleRequest::class.java)
+        } catch (e: Exception) {
+          return ResponseEntity.badRequest().body(
+              PptRunResponse(
+                  stage = "restyle",
+                  status = "error",
+                  errors = listOf(
+                      mapOf(
+                          "type" to "invalid_json",
+                          "message" to (e.message ?: "Failed to parse restyle request"),
+                      ),
+                  ),
+                  timingMs = timing,
+              ),
+          )
+        }
+    val input = PptInput(
+        topic = request.topic,
+        brief = request.brief,
+        audience = request.audience,
+        slideCount = request.slideCount,
+    )
+
+    // Resolve stance from provided scenarios or re-infer
+    val scenarioStart = System.nanoTime()
+    val scenarios: List<PresentationScenario>
+    val stance: DeckStance
+    if (request.scenarios != null && request.scenarios.isNotEmpty()) {
+      scenarios = request.scenarios
+      val found = scenarios.find { it.id == request.scenarioId }
+          ?: return ResponseEntity.badRequest().body(
+              PptRunResponse(
+                  stage = "restyle",
+                  status = "error",
+                  errors = listOf(mapOf("type" to "unknown_scenario_id", "message" to "scenarioId '${request.scenarioId}' not found in scenarios")),
+                  timingMs = timing,
+              ),
+          )
+      stance = DeckStanceResolver.fromScenario(found)
+    } else {
+      val scenarioResult = pptGenerationService.inferScenarios(input, GatewayModel.DEEPSEEK)
+      if (scenarioResult is ScenarioResult.Err) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(
+            PptRunResponse(
+                stage = "restyle",
+                status = "error",
+                errors = scenarioResult.errors.map { it.toMap() },
+                timingMs = timing,
+            ),
+        )
+      }
+      val brief = (scenarioResult as ScenarioResult.Ok).brief
+      scenarios = brief.scenarios
+      stance = DeckStanceResolver.resolve(brief, request.scenarioId)
+    }
+    timing["scenarios"] = elapsedMs(scenarioStart)
+
+    // Full pipeline: stance-aware outline planning
+    val outlineStart = System.nanoTime()
+    val outlineResult = pptGenerationService.planOutline(input, stance, GatewayModel.DEEPSEEK)
+    timing["outline"] = elapsedMs(outlineStart)
+
+    if (outlineResult is OutlineResult.Err) {
+      return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(
+          PptRunResponse(
+              stage = "restyle",
+              status = "error",
+              input = input,
+              errors = outlineResult.errors.map { it.toMap() },
+              timingMs = timing,
+          ),
+      )
+    }
+
+    val outline = (outlineResult as OutlineResult.Ok).outline
+
+    val contentStart = System.nanoTime()
+    val contentResult =
+        pptGenerationService.generateContent(input, outline, stance, listOf(GatewayModel.DEEPSEEK))
+    timing["content"] = elapsedMs(contentStart)
+
+    if (contentResult is ContentResult.Err) {
+      return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(
+          PptRunResponse(
+              stage = "restyle",
+              status = "error",
+              input = input,
+              outline = outline,
+              errors = contentResult.errors.map { it.toMap() },
+              timingMs = timing,
+          ),
+      )
+    }
+
+    val deck = (contentResult as ContentResult.Ok).deck
+
+    val themeStart = System.nanoTime()
+    val themeResult = pptGenerationService.pickThemeColors(outline, stance, GatewayModel.DEEPSEEK)
+    timing["theme"] = elapsedMs(themeStart)
+
+    if (themeResult is ThemeColorResult.Err) {
+      return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(
+          PptRunResponse(
+              stage = "restyle",
+              status = "error",
+              input = input,
+              outline = outline,
+              content = deck,
+              errors = themeResult.errors.map { it.toMap() },
+              timingMs = timing,
+          ),
+      )
+    }
+
+    val palette = (themeResult as ThemeColorResult.Ok).palette
+
+    val sectionLayouts = outline.sections.associate { it.id to it.layoutProfile }
+    val pptxStart = System.nanoTime()
+    val export = pptxExportService.render(deck, input.topic, palette.colors, sectionLayouts)
+    timing["pptx"] = elapsedMs(pptxStart)
+
+    return when (export) {
+      is PptxExportResult.Ok ->
+          ResponseEntity.ok(
+              okResponse(
+                  "restyle",
+                  input = input,
+                  outline = outline,
+                  content = deck,
+                  timing = timing,
+                  modelsUsed = mapOf(
+                      "outline" to GatewayModel.DEEPSEEK.id,
+                      "content" to GatewayModel.DEEPSEEK.id,
+                      "theme" to GatewayModel.DEEPSEEK.id,
+                  ),
+                  pptx = export.info.toResponse(),
+                  themeColors = palette.colors,
+                  scenarios = scenarios,
+                  deckStance = stance,
+              ),
+          )
+      is PptxExportResult.Err ->
+          ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(
+              PptRunResponse(
+                  stage = "restyle",
+                  status = "error",
+                  input = input,
+                  outline = outline,
+                  content = deck,
+                  themeColors = palette.colors,
+                  errors = listOf(mapOf("type" to "pptx_render_failed", "message" to export.message)),
+                  timingMs = timing,
+              ),
+          )
+    }
+  }
+
   /** Download a `.pptx` produced by `stage=pptx` (files live under `build/output/pptx/`). */
   @GetMapping("/download/{fileName}")
   fun download(@PathVariable fileName: String): ResponseEntity<Any> {
@@ -255,6 +471,8 @@ class PptApiController(
       modelsUsed: Map<String, String> = emptyMap(),
       pptx: PptxFileResponse? = null,
       themeColors: List<String>? = null,
+      scenarios: List<PresentationScenario>? = null,
+      deckStance: DeckStance? = null,
   ): PptRunResponse =
       PptRunResponse(
           stage = stage,
@@ -264,6 +482,8 @@ class PptApiController(
           content = content,
           pptx = pptx,
           themeColors = themeColors,
+          scenarios = scenarios,
+          deckStance = deckStance,
           modelsUsed = modelsUsed,
           timingMs = timing,
       )
@@ -302,9 +522,20 @@ data class PptRunResponse(
     val content: SlideDeckContent? = null,
     val pptx: PptxFileResponse? = null,
     val themeColors: List<String>? = null,
+    val scenarios: List<PresentationScenario>? = null,
+    val deckStance: DeckStance? = null,
     val modelsUsed: Map<String, String> = emptyMap(),
     val errors: List<Map<String, Any?>> = emptyList(),
     val timingMs: Map<String, Long> = emptyMap(),
+)
+
+data class PptRestyleRequest(
+    val topic: String,
+    val brief: String,
+    val audience: String,
+    val slideCount: Int,
+    val scenarioId: String,
+    val scenarios: List<PresentationScenario>? = null,
 )
 
 private fun PptInputError.toMap(): Map<String, Any?> =
@@ -348,4 +579,15 @@ private fun ThemeColorError.toMap(): Map<String, Any?> =
           mapOf("type" to "theme_validation_failed", "violations" to violations, "attempt" to attempt)
       is ThemeColorError.ExhaustedRetries ->
           mapOf("type" to "theme_exhausted_retries", "attempts" to attempts, "lastError" to lastError)
+    }
+
+private fun ScenarioError.toMap(): Map<String, Any?> =
+    when (this) {
+      is ScenarioError.LlmFailure -> mapOf("type" to "scenario_llm_failure", "message" to message)
+      is ScenarioError.InvalidJson ->
+          mapOf("type" to "scenario_invalid_json", "message" to message, "attempt" to attempt)
+      is ScenarioError.ValidationFailed ->
+          mapOf("type" to "scenario_validation_failed", "violations" to violations, "attempt" to attempt)
+      is ScenarioError.ExhaustedRetries ->
+          mapOf("type" to "scenario_exhausted_retries", "attempts" to attempts, "lastError" to lastError)
     }

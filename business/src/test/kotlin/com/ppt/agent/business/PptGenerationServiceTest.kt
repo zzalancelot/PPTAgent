@@ -8,6 +8,9 @@ import com.ppt.agent.business.content.SlideContentGenerator
 import com.ppt.agent.business.outline.OutlineJson
 import com.ppt.agent.business.outline.OutlinePlanner
 import com.ppt.agent.business.outline.OutlineResult
+import com.ppt.agent.business.scenario.DeckStance
+import com.ppt.agent.business.scenario.ScenarioPlanner
+import com.ppt.agent.business.scenario.ScenarioResult
 import com.ppt.agent.business.theme.ThemeColorPicker
 import com.ppt.agent.business.theme.ThemeColorResult
 import com.ppt.agent.framework.ChatMessage
@@ -72,11 +75,13 @@ private class FakeOutlinePlanner(
 ) : OutlinePlanner {
     var callCount = 0
     var lastInput: PptInput? = null
+    var lastStance: DeckStance? = null
     var lastModel: GatewayModel? = null
 
-    override fun plan(input: PptInput, model: GatewayModel): OutlineResult {
+    override fun plan(input: PptInput, stance: DeckStance?, model: GatewayModel): OutlineResult {
         callCount++
         lastInput = input
+        lastStance = stance
         lastModel = model
         return result
     }
@@ -88,15 +93,18 @@ private class FakeSlideContentGenerator(
     var callCount = 0
     var lastInput: PptInput? = null
     var lastOutline: OutlineJson? = null
+    var lastStance: DeckStance? = null
 
     override fun generate(
         input: PptInput,
         outline: OutlineJson,
+        stance: DeckStance?,
         modelPool: List<com.ppt.agent.framework.GatewayModel>,
     ): ContentResult {
         callCount++
         lastInput = input
         lastOutline = outline
+        lastStance = stance
         return result
     }
 }
@@ -106,12 +114,27 @@ private class FakeThemeColorPicker(
 ) : ThemeColorPicker {
     var callCount = 0
     var lastOutline: OutlineJson? = null
+    var lastStance: DeckStance? = null
     var lastModel: GatewayModel? = null
 
-    override fun pick(outline: OutlineJson, model: GatewayModel): ThemeColorResult {
+    override fun pick(outline: OutlineJson, stance: DeckStance?, model: GatewayModel): ThemeColorResult {
         callCount++
         lastOutline = outline
+        lastStance = stance
         lastModel = model
+        return result
+    }
+}
+
+private class FakeScenarioPlanner(
+    private val result: ScenarioResult = ScenarioResult.Err(emptyList()),
+) : ScenarioPlanner {
+    var callCount = 0
+    var lastInput: PptInput? = null
+
+    override fun infer(input: PptInput, model: GatewayModel): ScenarioResult {
+        callCount++
+        lastInput = input
         return result
     }
 }
@@ -125,7 +148,8 @@ class PptGenerationServiceTest {
         planner: OutlinePlanner = FakeOutlinePlanner(),
         generator: SlideContentGenerator = FakeSlideContentGenerator(),
         themePicker: ThemeColorPicker = FakeThemeColorPicker(),
-    ) = PptGenerationServiceImpl(adapter, parser, planner, generator, themePicker)
+        scenarioPlanner: ScenarioPlanner = FakeScenarioPlanner(),
+    ) = PptGenerationServiceImpl(adapter, parser, planner, generator, themePicker, scenarioPlanner)
 
     @Test
     fun pingLlmSendsASinglePingMessageAndReturnsTheAdapterResponseText() {
@@ -182,12 +206,35 @@ class PptGenerationServiceTest {
         val fakePlanner = FakeOutlinePlanner(expected)
         val service = service(planner = fakePlanner)
 
-        val result = service.planOutline(input, GatewayModel.DEEPSEEK)
+        val result = service.planOutline(input, model = GatewayModel.DEEPSEEK)
 
         assertSame(expected, result)
         assertEquals(1, fakePlanner.callCount)
         assertEquals(input, fakePlanner.lastInput)
         assertEquals(GatewayModel.DEEPSEEK, fakePlanner.lastModel)
+    }
+
+    @Test
+    fun planOutlineForwardsStanceToPlanner() {
+        val input = PptInput(topic = "topic", brief = "brief", audience = "audience")
+        val stance = DeckStance(
+            scenarioId = "s1",
+            label = "Test",
+            colorMood = "cool_slate",
+            voiceTone = "formal",
+            narrativeArc = "persuasion",
+            audienceFrame = "executives",
+        )
+        val expected = OutlineResult.Err(emptyList())
+        val fakePlanner = FakeOutlinePlanner(expected)
+        val service = service(planner = fakePlanner)
+
+        val result = service.planOutline(input, stance, GatewayModel.DEEPSEEK)
+
+        assertSame(expected, result)
+        assertEquals(1, fakePlanner.callCount)
+        assertSame(stance, fakePlanner.lastStance)
+        assertEquals(input, fakePlanner.lastInput)
     }
 
     @Test
@@ -230,7 +277,7 @@ class PptGenerationServiceTest {
         val fakePicker = FakeThemeColorPicker(expected)
         val service = service(themePicker = fakePicker)
 
-        val result = service.pickThemeColors(outline, GatewayModel.DEEPSEEK_FLASH)
+        val result = service.pickThemeColors(outline, model = GatewayModel.DEEPSEEK_FLASH)
 
         assertSame(expected, result)
         assertEquals(1, fakePicker.callCount)
@@ -239,7 +286,7 @@ class PptGenerationServiceTest {
     }
 
     @Test
-    fun pickThemeColorsDefaultsToDeepseekFlashModel() {
+    fun pickThemeColorsDefaultsToDeepseekModel() {
         val outline = com.ppt.agent.framework.Json.fromJson(
             javaClass.getResource("/outline/valid-outline.json")!!.readText(),
             OutlineJson::class.java,
@@ -249,6 +296,31 @@ class PptGenerationServiceTest {
 
         service.pickThemeColors(outline)
 
-        assertEquals(GatewayModel.DEEPSEEK_FLASH, fakePicker.lastModel)
+        assertEquals(GatewayModel.DEEPSEEK, fakePicker.lastModel)
+    }
+
+    @Test
+    fun inferScenariosDelegatesToTheScenarioPlannerWithSameInputAndModel() {
+        val input = PptInput(topic = "topic", brief = "brief", audience = "audience")
+        val expected = ScenarioResult.Err(emptyList())
+        val fakePlanner = FakeScenarioPlanner(expected)
+        val service = service(scenarioPlanner = fakePlanner)
+
+        val result = service.inferScenarios(input, GatewayModel.DEEPSEEK_FLASH)
+
+        assertSame(expected, result)
+        assertEquals(1, fakePlanner.callCount)
+        assertEquals(input, fakePlanner.lastInput)
+    }
+
+    @Test
+    fun inferScenariosDefaultsToDeepseekModel() {
+        val input = PptInput(topic = "topic", brief = "brief", audience = "audience")
+        val fakePlanner = FakeScenarioPlanner()
+        val service = service(scenarioPlanner = fakePlanner)
+
+        service.inferScenarios(input)
+
+        assertEquals(1, fakePlanner.callCount)
     }
 }

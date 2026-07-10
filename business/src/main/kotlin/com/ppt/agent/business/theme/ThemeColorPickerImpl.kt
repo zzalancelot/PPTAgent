@@ -1,6 +1,7 @@
 package com.ppt.agent.business.theme
 
 import com.ppt.agent.business.outline.OutlineJson
+import com.ppt.agent.business.scenario.DeckStance
 import com.ppt.agent.framework.ChatMessage
 import com.ppt.agent.framework.GatewayModel
 import com.ppt.agent.framework.Json
@@ -26,9 +27,9 @@ class ThemeColorPickerImpl(
     private val validator: ThemeColorValidator = ThemeColorValidator(),
 ) : ThemeColorPicker {
 
-    override fun pick(outline: OutlineJson, model: GatewayModel): ThemeColorResult {
+    override fun pick(outline: OutlineJson, stance: DeckStance?, model: GatewayModel): ThemeColorResult {
         val errors = mutableListOf<ThemeColorError>()
-        var messages = initialMessages(outline)
+        var messages = initialMessages(outline, stance)
         var lastError = "no attempts made"
         val overrides = mapOf("max_tokens" to MAX_TOKENS.toString())
 
@@ -91,7 +92,7 @@ class ThemeColorPickerImpl(
         return list.map { it as? String ?: error("'colors' entries must be strings") }
     }
 
-    private fun initialMessages(outline: OutlineJson): List<ChatMessage> {
+    private fun initialMessages(outline: OutlineJson, stance: DeckStance? = null): List<ChatMessage> {
         val system = loadPrompt(SYSTEM_PROMPT)
         val sections = outline.sections.map { SectionSummary(it.id, it.title, it.purpose) }
         val user = loadPrompt(USER_PROMPT)
@@ -103,7 +104,14 @@ class ThemeColorPickerImpl(
             .replace("{language}", outline.meta.language)
             .replace("{storyline_json}", Json.toJson(outline.storyline))
             .replace("{sections_json}", Json.toJson(sections))
-        return listOf(ChatMessage.System(system), ChatMessage.User(user))
+
+        val stanceAddendum = if (stance != null) {
+            "\ncolor_mood: ${stance.colorMood}\nvoice_tone: ${stance.voiceTone}"
+        } else {
+            ""
+        }
+
+        return listOf(ChatMessage.System(system), ChatMessage.User(user + stanceAddendum))
     }
 
     private fun validationFeedback(violations: List<String>): String = buildString {

@@ -27,7 +27,10 @@ export function slideTypeColor(type: string): string {
 export function modelColor(model: string): string {
   switch (model) {
     case "deepseek":
+    case "deepseek-pro":
       return "blue";
+    case "deepseek-flash":
+      return "geekblue";
     case "mimo":
       return "purple";
     case "minimax":

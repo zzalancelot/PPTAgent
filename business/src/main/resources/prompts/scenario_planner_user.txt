@@ -1,0 +1,8 @@
+Infer 3–5 presentation scenarios for this deck input.
+
+topic: {topic}
+brief: {brief}
+audience: {audience}
+slide_count: {slide_count}
+
+Return ONLY the ScenarioBrief JSON.

@@ -9,6 +9,9 @@ import com.ppt.agent.business.input.PptInputParser
 import com.ppt.agent.business.outline.OutlineJson
 import com.ppt.agent.business.outline.OutlinePlanner
 import com.ppt.agent.business.outline.OutlineResult
+import com.ppt.agent.business.scenario.DeckStance
+import com.ppt.agent.business.scenario.ScenarioPlanner
+import com.ppt.agent.business.scenario.ScenarioResult
 import com.ppt.agent.business.theme.ThemeColorPicker
 import com.ppt.agent.business.theme.ThemeColorResult
 import com.ppt.agent.framework.ChatMessage
@@ -29,6 +32,7 @@ class PptGenerationServiceImpl(
     private val outlinePlanner: OutlinePlanner,
     private val slideContentGenerator: SlideContentGenerator,
     private val themeColorPicker: ThemeColorPicker,
+    private val scenarioPlanner: ScenarioPlanner,
 ) : PptGenerationService {
 
     override fun pingLlm(model: GatewayModel): String =
@@ -41,15 +45,22 @@ class PptGenerationServiceImpl(
 
     override fun parseInput(json: String): ParseResult = inputParser.parse(json)
 
-    override fun planOutline(input: PptInput, model: GatewayModel): OutlineResult =
-        outlinePlanner.plan(input, model)
+    override fun planOutline(input: PptInput, stance: DeckStance?, model: GatewayModel): OutlineResult =
+        outlinePlanner.plan(input, stance, model)
+
+    override fun inferScenarios(input: PptInput, model: GatewayModel): ScenarioResult =
+        scenarioPlanner.infer(input, model)
 
     override fun generateContent(
         input: PptInput,
         outline: OutlineJson,
+        stance: DeckStance?,
         modelPool: List<GatewayModel>,
-    ): ContentResult = slideContentGenerator.generate(input, outline, modelPool)
+    ): ContentResult = slideContentGenerator.generate(input, outline, stance, modelPool)
 
-    override fun pickThemeColors(outline: OutlineJson, model: GatewayModel): ThemeColorResult =
-        themeColorPicker.pick(outline, model)
+    override fun pickThemeColors(
+        outline: OutlineJson,
+        stance: DeckStance?,
+        model: GatewayModel,
+    ): ThemeColorResult = themeColorPicker.pick(outline, stance, model)
 }

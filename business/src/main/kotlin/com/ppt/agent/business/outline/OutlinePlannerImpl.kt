@@ -1,6 +1,7 @@
 package com.ppt.agent.business.outline
 
 import com.ppt.agent.business.input.PptInput
+import com.ppt.agent.business.scenario.DeckStance
 import com.ppt.agent.framework.ChatMessage
 import com.ppt.agent.framework.GatewayModel
 import com.ppt.agent.framework.Json
@@ -24,13 +25,14 @@ class OutlinePlannerImpl(
     private val validator: OutlineValidator = OutlineValidator(),
 ) : OutlinePlanner {
 
-    override fun plan(input: PptInput, model: GatewayModel): OutlineResult {
+    override fun plan(input: PptInput, stance: DeckStance?, model: GatewayModel): OutlineResult {
         val errors = mutableListOf<OutlineError>()
-        var messages = initialMessages(input)
+        var messages = initialMessages(input, stance)
         var tokenIndex = 0
         var lastError = "no attempts made"
+        val maxAttempts = maxAttemptsFor(input)
 
-        repeat(MAX_ATTEMPTS) { i ->
+        repeat(maxAttempts) { i ->
             val attempt = i + 1
             val maxTokens = TOKEN_LADDER[tokenIndex.coerceAtMost(TOKEN_LADDER.lastIndex)]
             val overrides = mapOf("max_tokens" to maxTokens.toString())
@@ -54,7 +56,7 @@ class OutlinePlannerImpl(
             }
 
             val outline = try {
-                toOutline(parsed!!)
+                sanitizeBulletHints(toOutline(parsed!!))
             } catch (e: Exception) {
                 val message = e.message ?: "could not map JSON to OutlineJson"
                 errors += OutlineError.InvalidJson(message, attempt)
@@ -72,21 +74,27 @@ class OutlinePlannerImpl(
                 return@repeat
             }
 
-            val violations = validator.validate(outline, input)
+            val violations = validator.validate(outline, input).toMutableList()
+            // Soft-check: narrativeArc should match stance when provided
+            if (stance != null && stance.narrativeArc.isNotBlank() &&
+                outline.meta.narrativeArc != stance.narrativeArc
+            ) {
+                violations += "meta.narrativeArc is '${outline.meta.narrativeArc}' but stance requires '${stance.narrativeArc}'"
+            }
             if (violations.isEmpty()) {
                 return OutlineResult.Ok(outline)
             }
 
             errors += OutlineError.ValidationFailed(violations, attempt)
             lastError = "ValidationFailed: ${violations.joinToString("; ")}"
-            // Large decks need more output tokens on later retries (context grows with feedback).
-            if (attempt >= 2 && input.slideCount >= 20) {
+            // Large decks need more output tokens when validation fails (context grows with feedback).
+            if (input.slideCount >= 20) {
                 tokenIndex = (tokenIndex + 1).coerceAtMost(TOKEN_LADDER.lastIndex)
             }
             messages = messages + ChatMessage.User(validationFeedback(violations))
         }
 
-        errors += OutlineError.ExhaustedRetries(MAX_ATTEMPTS, lastError)
+        errors += OutlineError.ExhaustedRetries(maxAttempts, lastError)
         return OutlineResult.Err(errors)
     }
 
@@ -111,13 +119,27 @@ class OutlinePlannerImpl(
         return outline
     }
 
-    private fun initialMessages(input: PptInput): List<ChatMessage> {
+    private fun initialMessages(input: PptInput, stance: DeckStance? = null): List<ChatMessage> {
         val system = loadPrompt(SYSTEM_PROMPT)
-        val user = loadPrompt(USER_PROMPT)
+        var user = loadPrompt(USER_PROMPT)
             .replace("{topic}", input.topic)
             .replace("{brief}", input.brief)
             .replace("{audience}", input.audience)
             .replace("{slide_count}", input.slideCount.toString())
+        if (stance != null) {
+            user += buildString {
+                appendLine()
+                appendLine()
+                appendLine("## Presentation stance")
+                appendLine("scenario: ${stance.label}")
+                appendLine("audience_frame: ${stance.audienceFrame}")
+                appendLine("voice_tone: ${stance.voiceTone}")
+                appendLine("narrative_arc: ${stance.narrativeArc}")
+                appendLine("color_mood: ${stance.colorMood}")
+                appendLine()
+                append("Plan this ${input.slideCount}-slide outline specifically for the scenario above. Section layoutProfile values should visibly differ from a generic deck of the same topic.")
+            }
+        }
         return listOf(ChatMessage.System(system), ChatMessage.User(user))
     }
 
@@ -130,9 +152,26 @@ class OutlinePlannerImpl(
         }
         if (violations.any { it.contains("'summary'") || it.contains("consecutive") }) {
             appendLine()
-            appendLine("Reminder: exactly 1 summary slide total; break long content runs with comparison/timeline/quote/section_divider.")
+            appendLine("Reminder: exactly 1 summary slide total; never 4+ consecutive slides with the same slideType.")
+            appendLine("Break long content runs by changing slideType on middle slides to comparison, timeline, quote, framework, case_study, or section_divider.")
+        }
+        if (violations.any { it.contains("bulletHints") }) {
+            appendLine()
+            appendLine("Reminder: content-like slides (content, comparison, timeline, framework, case_study, code_or_demo) need 2-5 bulletHints each — never 6 or more. Trim extras.")
         }
     }.trim()
+
+    /** Trim over-long bulletHints lists — models often emit 6+ hints on timeline slides. */
+    private fun sanitizeBulletHints(outline: OutlineJson): OutlineJson {
+        val slides = outline.slides.map { slide ->
+            if (slide.slideType !in SlideTypes.CONTENT_LIKE || slide.bulletHints.size <= 5) slide
+            else slide.copy(bulletHints = slide.bulletHints.take(5))
+        }
+        return if (slides === outline.slides) outline else outline.copy(slides = slides)
+    }
+
+    private fun maxAttemptsFor(input: PptInput): Int =
+        if (input.slideCount >= LARGE_DECK_SLIDE_COUNT) MAX_ATTEMPTS_LARGE else MAX_ATTEMPTS
 
     private fun loadPrompt(resource: String): String {
         val stream = javaClass.getResourceAsStream(resource)
@@ -142,6 +181,8 @@ class OutlinePlannerImpl(
 
     companion object {
         const val MAX_ATTEMPTS = 3
+        const val MAX_ATTEMPTS_LARGE = 4
+        const val LARGE_DECK_SLIDE_COUNT = 25
         val TOKEN_LADDER = listOf(8192, 12288, 16384)
 
         private const val SYSTEM_PROMPT = "/prompts/outline_planner_system.txt"

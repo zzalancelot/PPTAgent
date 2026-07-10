@@ -46,7 +46,7 @@ const EXAMPLE: FormValues = {
   model: DEFAULT_MODEL,
 };
 
-const STAGE_HINTS: Record<Stage, string> = {
+const STAGE_HINTS: Record<string, string> = {
   parse: "仅校验输入（毫秒级）",
   outline: "解析 + 一次大纲 LLM 调用（约 1–2 分钟）",
   content: "解析 + 大纲 + 逐页生成（27 页约数分钟）",
@@ -143,7 +143,7 @@ export default function InputForm({ loading, debugMode, onRun }: Props) {
             </Space>
           }
         >
-          <InputNumber min={25} max={30} placeholder="27" style={{ width: "100%" }} />
+          <InputNumber min={25} max={30} precision={0} placeholder="27" style={{ width: "100%" }} />
         </Form.Item>
 
         {debugMode ? (

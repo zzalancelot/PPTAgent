@@ -1,7 +1,7 @@
 import axios from "axios";
 
 /** Pipeline stages exposed by `PptApiController`. */
-export type Stage = "parse" | "outline" | "content" | "pptx";
+export type Stage = "parse" | "outline" | "content" | "pptx" | "restyle";
 
 /** Gateway model ids (see framework `GatewayModel`). */
 export type ModelId = "deepseek" | "mimo" | "minimax";
@@ -46,6 +46,7 @@ export interface OutlineSection {
   title: string;
   purpose: string;
   slideRange: number[];
+  layoutProfile: string;
 }
 
 export interface OutlineSlide {
@@ -113,6 +114,26 @@ export interface PptxFileInfo {
   slideCount: number;
 }
 
+export interface PresentationScenario {
+  id: string;
+  label: string;
+  description: string;
+  audienceFrame: string;
+  colorMood: string;
+  voiceTone: string;
+  narrativeArc: string;
+  confidence: number;
+}
+
+export interface DeckStance {
+  scenarioId: string;
+  label: string;
+  colorMood: string;
+  voiceTone: string;
+  narrativeArc: string;
+  audienceFrame: string;
+}
+
 export interface RunResponse {
   stage: Stage;
   status: "ok" | "error";
@@ -120,12 +141,39 @@ export interface RunResponse {
   outline?: OutlineJson;
   content?: SlideDeckContent;
   pptx?: PptxFileInfo;
+  themeColors?: string[];
+  scenarios?: PresentationScenario[];
+  deckStance?: DeckStance;
+  modelsUsed?: Record<string, string>;
   errors: PipelineError[];
   timingMs: Record<string, number>;
 }
 
+export interface RestyleRequestBody {
+  topic: string;
+  brief: string;
+  audience: string;
+  slideCount: number;
+  scenarioId: string;
+  scenarios?: PresentationScenario[];
+}
+
 // `content` can run several minutes for a full 27-slide deck.
 const http = axios.create({ timeout: 15 * 60 * 1000 });
+
+/** Convert non-RunResponse error body (e.g. Spring { error, message }) to a synthetic RunResponse. */
+function normalizeResponse(data: unknown, fallbackStage: Stage): RunResponse {
+  const d = data as Record<string, unknown>;
+  if (d && typeof d === "object" && "error" in d && !("stage" in d)) {
+    return {
+      stage: fallbackStage,
+      status: "error",
+      errors: [{ type: String(d.error), message: String(d.message ?? d.error) }],
+      timingMs: {},
+    };
+  }
+  return d as unknown as RunResponse;
+}
 
 export async function runPipeline(
   body: RunRequestBody,
@@ -134,10 +182,9 @@ export async function runPipeline(
 ): Promise<RunResponse> {
   const { data } = await http.post<RunResponse>("/v1/ppt/run", body, {
     params: { stage, model },
-    // Accept 4xx/5xx so we can render structured error bodies instead of throwing.
-    validateStatus: (s) => s < 500 || s === 500,
+    validateStatus: (s) => s < 600,
   });
-  return data;
+  return normalizeResponse(data, stage);
 }
 
 export interface PingResponse {
@@ -159,4 +206,11 @@ export interface HealthResponse {
 export async function fetchHealth(): Promise<HealthResponse> {
   const { data } = await http.get<HealthResponse>("/v1/ppt/health", { timeout: 8000 });
   return data;
+}
+
+export async function restylePipeline(body: RestyleRequestBody): Promise<RunResponse> {
+  const { data } = await http.post<RunResponse>("/v1/ppt/restyle", body, {
+    validateStatus: (s) => s < 600,
+  });
+  return normalizeResponse(data, "restyle");
 }

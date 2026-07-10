@@ -29,7 +29,7 @@ management:
 gateway:
   grpc:
     port: 9090
-  default-model: deepseek-flash
+  default-model: deepseek
   health:
     probe-mode: real
     timeout: 8s
@@ -62,6 +62,7 @@ gateway:
         max_tokens: "8192"
     mimo:
       base-url: https://api.xiaomimimo.com
+      # Provider model id (MiMo v2.5 family); enable when ai.keys.mimo is set.
       model: mimo-v2.5-pro
       api-key: ${ai.keys.mimo:${MIMO_API_KEY:}}
       params:

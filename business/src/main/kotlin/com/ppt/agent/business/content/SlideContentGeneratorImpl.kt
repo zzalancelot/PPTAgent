@@ -3,6 +3,7 @@ package com.ppt.agent.business.content
 import com.ppt.agent.business.input.PptInput
 import com.ppt.agent.business.outline.OutlineJson
 import com.ppt.agent.business.outline.OutlineSlide
+import com.ppt.agent.business.scenario.DeckStance
 import com.ppt.agent.framework.ChatMessage
 import com.ppt.agent.framework.GatewayModel
 import com.ppt.agent.framework.Json
@@ -38,6 +39,7 @@ class SlideContentGeneratorImpl(
     override fun generate(
         input: PptInput,
         outline: OutlineJson,
+        stance: DeckStance?,
         modelPool: List<GatewayModel>,
     ): ContentResult {
         require(modelPool.isNotEmpty()) { "model pool must not be empty" }
@@ -53,7 +55,7 @@ class SlideContentGeneratorImpl(
                     Callable {
                         semaphore.acquire()
                         try {
-                            generateOneSlide(input, outline, slide, assignments, modelPool)
+                            generateOneSlide(input, outline, slide, assignments, modelPool, stance)
                         } finally {
                             semaphore.release()
                         }
@@ -106,9 +108,10 @@ class SlideContentGeneratorImpl(
         slide: OutlineSlide,
         assignments: Map<String, GatewayModel>,
         pool: List<GatewayModel>,
+        stance: DeckStance? = null,
     ): SlideOutcome {
         val assigned = assignments.getValue(slide.sectionId)
-        val baseMessages = buildMessages(outline, slide)
+        val baseMessages = buildMessages(outline, slide, stance)
 
         val primary = attemptWithModel(baseMessages, assigned, slide, PRIMARY_ATTEMPTS, PRIMARY_TOKEN_LADDER)
         if (primary is AttemptResult.Success) return SlideOutcome.Succeeded(primary.content)
@@ -213,7 +216,7 @@ class SlideContentGeneratorImpl(
         )
     }
 
-    private fun buildMessages(outline: OutlineJson, slide: OutlineSlide): List<ChatMessage> {
+    private fun buildMessages(outline: OutlineJson, slide: OutlineSlide, stance: DeckStance? = null): List<ChatMessage> {
         val system = loadPrompt(SYSTEM_PROMPT)
         val prev = outline.slides.firstOrNull { it.index == slide.index - 1 }
         val next = outline.slides.firstOrNull { it.index == slide.index + 1 }
@@ -228,7 +231,23 @@ class SlideContentGeneratorImpl(
             .replace("{prev_slide_hint}", slideHint(prev))
             .replace("{next_slide_hint}", slideHint(next))
             .replace("{consistency_note}", consistencyNote(outline))
-        return listOf(ChatMessage.System(system), ChatMessage.User(user))
+
+        val stanceBlock = if (stance != null) {
+            buildString {
+                appendLine()
+                appendLine("## Presentation stance (scenario)")
+                appendLine("scenario: ${stance.label}")
+                appendLine("voice: ${stance.voiceTone}")
+                appendLine("audience frame: ${stance.audienceFrame}")
+                appendLine("narrative arc: ${stance.narrativeArc}")
+                appendLine()
+                append("Write slide copy that matches this voice. Do not change slide structure — outline fixes slideType and titles.")
+            }
+        } else {
+            ""
+        }
+
+        return listOf(ChatMessage.System(system), ChatMessage.User(user + stanceBlock))
     }
 
     private fun slideHint(slide: OutlineSlide?): String =

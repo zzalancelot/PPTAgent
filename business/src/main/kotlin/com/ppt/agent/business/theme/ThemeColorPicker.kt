@@ -1,6 +1,7 @@
 package com.ppt.agent.business.theme
 
 import com.ppt.agent.business.outline.OutlineJson
+import com.ppt.agent.business.scenario.DeckStance
 import com.ppt.agent.framework.GatewayModel
 
 /**
@@ -10,7 +11,11 @@ import com.ppt.agent.framework.GatewayModel
  * `docs/THEME_COLOR_SPEC.md`.
  */
 interface ThemeColorPicker {
-    fun pick(outline: OutlineJson, model: GatewayModel = GatewayModel.DEEPSEEK_FLASH): ThemeColorResult
+    fun pick(
+        outline: OutlineJson,
+        stance: DeckStance? = null,
+        model: GatewayModel = GatewayModel.DEEPSEEK,
+    ): ThemeColorResult
 }
 
 sealed class ThemeColorResult {

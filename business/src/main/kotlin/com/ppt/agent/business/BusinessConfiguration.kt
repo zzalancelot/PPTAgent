@@ -6,6 +6,8 @@ import com.ppt.agent.business.input.PptInputParser
 import com.ppt.agent.business.input.PptInputParserImpl
 import com.ppt.agent.business.outline.OutlinePlanner
 import com.ppt.agent.business.outline.OutlinePlannerImpl
+import com.ppt.agent.business.scenario.ScenarioPlanner
+import com.ppt.agent.business.scenario.ScenarioPlannerImpl
 import com.ppt.agent.business.theme.ThemeColorPicker
 import com.ppt.agent.business.theme.ThemeColorPickerImpl
 import com.ppt.agent.llm.adapter.LlmAdapter
@@ -29,12 +31,16 @@ class BusinessConfiguration {
     fun themeColorPicker(adapter: LlmAdapter): ThemeColorPicker = ThemeColorPickerImpl(adapter)
 
     @Bean
+    fun scenarioPlanner(adapter: LlmAdapter): ScenarioPlanner = ScenarioPlannerImpl(adapter)
+
+    @Bean
     fun pptGenerationService(
         adapter: LlmAdapter,
         inputParser: PptInputParser,
         outlinePlanner: OutlinePlanner,
         slideContentGenerator: SlideContentGenerator,
         themeColorPicker: ThemeColorPicker,
+        scenarioPlanner: ScenarioPlanner,
     ): PptGenerationService =
-        PptGenerationServiceImpl(adapter, inputParser, outlinePlanner, slideContentGenerator, themeColorPicker)
+        PptGenerationServiceImpl(adapter, inputParser, outlinePlanner, slideContentGenerator, themeColorPicker, scenarioPlanner)
 }

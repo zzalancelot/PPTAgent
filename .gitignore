@@ -18,6 +18,15 @@ docs/outline-test-response*.json
 
 ### Generated / bundled PPTX (never commit) ###
 *.pptx
+# 招聘题面交付：两版各 5 套 demo 需入库
+!docs/demos/
+!docs/demos/**/
+!docs/demos/**/*.pptx
+
+### Benchmark 运行日志（仅保留 benchmark-results.jsonl）###
+docs/benchmark-*.log
+docs/benchmark-run.log
+docs/benchmark-retry*.log
 
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/

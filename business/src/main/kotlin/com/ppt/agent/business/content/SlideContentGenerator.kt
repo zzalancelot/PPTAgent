@@ -2,6 +2,7 @@ package com.ppt.agent.business.content
 
 import com.ppt.agent.business.input.PptInput
 import com.ppt.agent.business.outline.OutlineJson
+import com.ppt.agent.business.scenario.DeckStance
 import com.ppt.agent.framework.GatewayModel
 
 /**
@@ -15,6 +16,7 @@ interface SlideContentGenerator {
     fun generate(
         input: PptInput,
         outline: OutlineJson,
+        stance: DeckStance? = null,
         modelPool: List<GatewayModel> = ModelPool.DEFAULT,
     ): ContentResult
 }
@@ -32,9 +34,13 @@ sealed class ContentError {
     data class PartialFailure(val failedIndices: List<Int>, val message: String) : ContentError()
 }
 
-/** The default set of models slide content generation may round-robin across. */
+/** Models available for slide content generation. */
 object ModelPool {
-    val DEFAULT: List<GatewayModel> = listOf(GatewayModel.DEEPSEEK, GatewayModel.MIMO, GatewayModel.MINIMAX)
+    /** Main-flow default: single model while validating the pipeline end-to-end. */
+    val DEFAULT: List<GatewayModel> = listOf(GatewayModel.DEEPSEEK)
+
+    /** Round-robin across providers (enable when mimo/minimax keys are configured). */
+    val MULTI: List<GatewayModel> = listOf(GatewayModel.DEEPSEEK, GatewayModel.MIMO, GatewayModel.MINIMAX)
 }
 
 object ContentGenerationConfig {

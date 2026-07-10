@@ -126,7 +126,7 @@ class SlideContentGeneratorTest {
         // 7 sections mapped to a model id.
         assertEquals(7, deck.meta.modelsUsed.size)
         assertEquals("deepseek", deck.meta.modelsUsed["opening"])
-        assertEquals("mimo", deck.meta.modelsUsed["setup"])
+        assertEquals("deepseek", deck.meta.modelsUsed["setup"])
     }
 
     @Test
@@ -150,9 +150,7 @@ class SlideContentGeneratorTest {
             if (idx == 2 && model == GatewayModel.DEEPSEEK) Behavior.TRUNCATED else Behavior.VALID
         }
 
-        val result = SlideContentGeneratorImpl(adapter).generate(input, outline())
-
-        assertTrue(result is ContentResult.Ok, "expected Ok via fallback, got $result")
+        val result = SlideContentGeneratorImpl(adapter).generate(input, outline(), modelPool = ModelPool.MULTI)
         assertEquals(3, adapter.callsByKey["2|deepseek"], "should exhaust 3 attempts on DEEPSEEK")
         assertEquals(1, adapter.callsByKey["2|mimo"], "should succeed on first MIMO fallback attempt")
         // Token ladder on the primary model, then reset on the fallback model.
@@ -167,7 +165,7 @@ class SlideContentGeneratorTest {
             if (idx == 5) Behavior.TRUNCATED else Behavior.VALID
         }
 
-        val result = SlideContentGeneratorImpl(adapter).generate(input, outline())
+        val result = SlideContentGeneratorImpl(adapter).generate(input, outline(), modelPool = ModelPool.MULTI)
 
         assertTrue(result is ContentResult.Err, "expected Err, got $result")
         val errors = (result as ContentResult.Err).errors

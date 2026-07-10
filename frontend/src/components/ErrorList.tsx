@@ -35,6 +35,24 @@ function describe(err: PipelineError): string {
           ? `（页码：${(err.failedIndices as number[]).join(", ")}）`
           : ""
       }`;
+    case "scenario_invalid_json":
+      return `场景 JSON 无法解析：${err.message ?? ""}`;
+    case "scenario_validation_failed":
+      return `场景校验失败：${(err.violations as string[] | undefined)?.join("；") ?? err.message ?? ""}`;
+    case "scenario_exhausted_retries":
+      return `场景分析重试用尽（${err.attempts ?? "?"} 次）：${err.lastError ?? ""}`;
+    case "theme_invalid_json":
+      return `配色 JSON 无法解析：${err.message ?? ""}`;
+    case "theme_validation_failed":
+      return `配色校验失败：${err.message ?? ""}`;
+    case "theme_exhausted_retries":
+      return `配色重试用尽（${err.attempts ?? "?"} 次）：${err.lastError ?? ""}`;
+    case "pptx_render_failed":
+      return `PPTX 渲染失败：${err.message ?? ""}`;
+    case "unknown_scenario_id":
+      return `未知场景 ID：${err.scenarioId ?? err.message ?? ""}`;
+    case "slide_count_mismatch":
+      return `页数不匹配：期望 ${err.expected ?? "?"}，实际 ${err.actual ?? "?"}`;
     default:
       return err.message ?? JSON.stringify(err);
   }

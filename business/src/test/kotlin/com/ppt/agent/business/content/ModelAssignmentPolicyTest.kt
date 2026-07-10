@@ -26,7 +26,7 @@ class ModelAssignmentPolicyTest {
             "opening", "setup", "basics", "control", "functions", "project", "closing",
         )
 
-        val assignments = ModelAssignmentPolicy.assignBySection(outline, ModelPool.DEFAULT)
+        val assignments = ModelAssignmentPolicy.assignBySection(outline, ModelPool.MULTI)
 
         assertEquals(
             mapOf(
@@ -62,7 +62,9 @@ class ModelAssignmentPolicyTest {
 
         assertEquals(4, assignments.size)
         assertEquals(GatewayModel.DEEPSEEK, assignments["s1"])
-        assertEquals(GatewayModel.DEEPSEEK, assignments["s4"]) // wraps: index 3 % 3 == 0
+        assertEquals(GatewayModel.DEEPSEEK, assignments["s2"])
+        assertEquals(GatewayModel.DEEPSEEK, assignments["s3"])
+        assertEquals(GatewayModel.DEEPSEEK, assignments["s4"])
     }
 
     @Test

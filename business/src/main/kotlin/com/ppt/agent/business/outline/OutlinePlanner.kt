@@ -1,6 +1,7 @@
 package com.ppt.agent.business.outline
 
 import com.ppt.agent.business.input.PptInput
+import com.ppt.agent.business.scenario.DeckStance
 import com.ppt.agent.framework.GatewayModel
 
 /**
@@ -10,7 +11,7 @@ import com.ppt.agent.framework.GatewayModel
  * never in the adapter.
  */
 interface OutlinePlanner {
-    fun plan(input: PptInput, model: GatewayModel = GatewayModel.DEEPSEEK): OutlineResult
+    fun plan(input: PptInput, stance: DeckStance? = null, model: GatewayModel = GatewayModel.DEEPSEEK): OutlineResult
 }
 
 sealed class OutlineResult {

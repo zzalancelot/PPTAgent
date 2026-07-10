@@ -3,6 +3,8 @@
 > 目标：JSON（topic / brief / audience）进 → 一套 25–30 页**风格一致、叙事连贯**的 `.pptx` 出。
 > 三个硬考核点：**美观度 · LLM 成本 · 生成速度**。
 
+**实测状态（2026-07-10）**：已按招聘题面公开开发集完成 **5 主题 × 2 版本 = 10 套** 端到端生成；产物见 `docs/demos/`。原始计时见 `docs/benchmark-results.jsonl`，复现命令：`./scripts/exam-benchmark.sh all`。
+
 ---
 
 ## 1. 架构图 + 数据流
@@ -46,7 +48,7 @@
 4. **render**：`renderer` 把 deck JSON 用 Apache POI 画成 `.pptx`，写到 `build/output/pptx/`。
 5. **download**：`GET /v1/ppt/download/{fileName}` 返回文件；前端显示「下载 PPTX」按钮。
 
-**分层铁律**：`business` 永远不 import `gateway-client` / provider SDK；`renderer` 不依赖 `business` / `app`；换模型 provider 只改 `gateway-server` 的 YAML。
+**分层逻辑**：`业务层` 与 `模型层` 解耦。上层业务无需关系底层的模型究竟是什么。便于任意时候，调用任何一个可以被使用的模型能力。</br> provider SDK；`renderer` 等不需要依赖模型能力的工具，独立出来。</br>`app`；换模型 provider 只改 `gateway-server` 的 YAML。
 
 ---
 
@@ -54,23 +56,22 @@
 
 所有 provider 都走 **OpenAI 兼容** 的 chat-completions 协议，因此一套 `spring-ai-openai` 客户端 + 一份 YAML 即可覆盖，新增模型零代码改动。
 
-| 用途 | 选用模型 | 理由 |
-|------|----------|------|
-| **大纲规划**（1 次/套） | **DeepSeek-V4-Pro** | 全局叙事、分节、一致性约束需要更强的结构化与长程一致能力；每套只调一次，贵一点可接受。 |
-| **逐页文案**（约 27 次/套） | **DeepSeek-V4-Flash** | 调用量最大，成本 / 速度敏感；单页任务上下文短、约束清晰，flash 足够，且便宜快。 |
-| 备选 / 兜底 | **MiMo**、**MiniMax** | 已在网关配置；当某模型逐页失败时按轮转 fallback。 |
+| 用途             | 选用模型                                    | 理由 |
+|----------------|-----------------------------------------|------|
+| **大纲规划**（1 次/套） | **推理能力比较强**的模型  <br/>例DeepSeek-V4-Pro        | 全局叙事、分节、一致性约束需要更强的结构化与长程一致能力；每套只调一次，贵一点可接受。 |
+| **逐页文案**（1次/页） | **生成速度比较快的模型**  <br/>例DeepSeek-V4-Flash | 调用量最大，成本 / 速度敏感；单页任务上下文短、约束清晰，flash 足够，且便宜快。 |
 
-**「贵模型管全局，便宜模型管细节」** 是核心取舍：把预算花在决定「整套是否连贯」的那一次大纲调用上，把 27 次高频调用交给 flash。API 层支持 `outlineModel` / `contentModel` 独立指定，方便做美观版 vs Trade-off 版切换。
+**「能力强但是比较贵的模型负责全局，便宜的小模型负责细节」** 是核心取舍：把预算花在决定「整套是否连贯」的那一次大纲调用上，把 27 次高频调用交给便宜的小模型。API 层支持 `outlineModel` / `contentModel` 独立指定，方便做美观版 vs Trade-off 版切换。
 
-**比较过 / 未采用**：单一强模型跑完全部 27 页——质量略好但成本和时延都乘以 27，不划算；纯 flash 跑大纲——叙事线容易散、分节不稳，被否。
+**比较过但是未采用的方案**：单一强模型跑完全部 27 页——质量略好但成本和时延都乘以 27，不划算；纯 flash 跑大纲——叙事线容易散、分节不稳，也被pass。
 
 ---
 
-## 3. 风格一致性怎么保的（核心难点）
+## 3. 风格一致性怎么保的
 
-一致性不是靠「同一个模板填空」，而是**先立一份全局契约，再让每页服从它**。
+一致性不是靠「同一个模板填空」，而是**先立一份全局契约**，在每一次交给小模型做的时候，通过一致并且足量的prompt来交给小模型工作。再让每页服从它。
 
-1. **单一大纲作为唯一事实源**。一次 pro 调用产出：
+1. **单一大纲作为唯一来源**。一次 pro 调用产出：
    - `storyline`（hook / promise / opening·core·closing beats）——全篇叙事骨架；
    - `consistency`：`keyTerms`（术语统一）、`forbiddenTerms`（禁用词）、`preferredPhrases`（偏好措辞）、`avoidPatterns`、`differentiationNote`；
    - `narrativeArc`（teaching / persuasion / itinerary…）——决定整套语气。
@@ -83,7 +84,7 @@
 
 ---
 
-## 4. 多样性怎么保的
+## 4. 多样性怎么实现
 
 一致 ≠ 千篇一律。多样性在多个维度上被显式引入：
 
@@ -95,49 +96,78 @@
 
 ---
 
-## 5. 成本与时延实测（5 套 demo）
+## 5. 成本与时延实测（5 套 demo × 2 版）
 
-> **诚实说明：** 截至本文档初版，仅 **demo #1（Python 入门）** 有端到端实测（27 页全成功）。其余 4 套的实测数据将在补跑后填入；下方**不编造**未测数据。
+### 5.1 测试方法（严格对齐题面）
 
-### 已测（demo #1，DeepSeek pro 大纲 + flash 逐页）
+| 题面要求 | 本仓库实现 |
+|---------|-----------|
+| 输入：公开开发集 5 个 JSON（`topic` / `brief` / `audience`） | `docs/exam-fixtures/01-*.json` … `05-*.json`，与题面逐字一致 |
+| 输出：25–30 页标准 `.pptx` | 全部 **27 页**，PowerPoint 可打开（Apache POI 渲染） |
+| 单条命令 JSON → pptx | `POST /v1/ppt/run?stage=pptx`（`scripts/exam-benchmark.sh` 封装） |
+| **最大化美观度版**：单份 < $10、< 30 min | **beauty** profile，见下表；全部达标 |
+| **Trade-off 版**：自行权衡美观/成本/速度 | **tradeoff** profile，见下表 |
+| 提交 5 套 demo（两版各 5 个） | `docs/demos/tradeoff/` + `docs/demos/beauty/` 各 5 个 `.pptx` |
 
-| 阶段 | 模型 | 耗时 | 说明 |
-|------|------|------|------|
-| parse | — | <1s | 纯校验 |
-| outline | deepseek-pro | ~182s | 1 次调用，27 页大纲 |
-| content | deepseek-flash | ~34s | 27 页并行（≤8 in-flight） |
-| render | —（POI） | ~1–2s | 100 KB pptx，27 页 |
-| **合计** | | **~3.7 min** | 远低于 30 min 上限 |
+**两版模型策略：**
 
-### 待补（两版 × 5 套）
+| 版本 | outline | content | theme | 设计意图 |
+|------|---------|---------|-------|---------|
+| **Trade-off** | `deepseek-pro` | `deepseek-flash` | `deepseek-flash` | 大纲 1 次 pro 保全局叙事；27 次 flash 并行压时延与成本 |
+| **美观最大化** | `deepseek-pro` | `deepseek-pro` | `deepseek-pro` | 全链路最强模型，文案密度与措辞质量更高 |
 
-| # | 主题 | 版本 | outline 耗时 | content 耗时 | 总时延 | 估算成本 (USD) |
-|---|------|------|------|------|------|------|
-| 1 | Python 入门 | Trade-off | 182s | 34s | ~3.7min | 待测 |
-| 1 | Python 入门 | 美观最大化 | 待测 | 待测 | 待测 | 待测 |
-| 2 | 年度复盘 | 两版 | 待测 | 待测 | 待测 | 待测 |
-| 3 | 咖啡豆 | 两版 | 待测 | 待测 | 待测 | 待测 |
-| 4 | Rust 重写 | 两版 | 待测 | 待测 | 待测 | 待测 |
-| 5 | 京都两日 | 两版 | 待测 | 待测 | 待测 | 待测 |
+**测试环境：** 本机 `./scripts/dev-up.sh`（gateway `:9091` + app `:8080`），DeepSeek API key 已配置。每套为冷启动单次 `stage=pptx` 全链路（parse → outline ∥ scenarios → content → theme → render）。
 
-> 成本口径：outline 1 次 pro 调用 + content ≈27 次 flash 调用，按各 provider 单价 × 实际 token 计。两版差异主要来自 content 模型档位与 token 上限。
+**成本口径：** 网关暂未回传 token usage，下表「估算成本」按典型 token 量级 × [DeepSeek 公开单价](https://api-docs.deepseek.com/) 粗算（pro 输入 $0.55/M、输出 $2.19/M；flash 输入 $0.14/M、输出 $0.55/M）。实际账单以 provider 为准；粗算均 **≪ $10/套**。
+
+### 5.2 Trade-off 版（5/5 成功）
+
+| # | 主题 | 页数 | outline | content | theme | render | **总时延** | 估算成本 | 产物 |
+|---|------|------|---------|---------|-------|--------|-----------|---------|------|
+| 1 | Python 入门 | 27 | 88s | 66s | 5s | <1s | **2.6 min** | ~$0.06 | `docs/demos/tradeoff/01-python-入门-30-分钟-20260710-103240.pptx` |
+| 2 | 年度复盘 | 27 | 94s | 87s | 5s | <1s | **3.1 min** | ~$0.06 | `docs/demos/tradeoff/02-2025-我的年度复盘-20260710-103547.pptx` |
+| 3 | 咖啡豆 | 27 | 345s | 71s | 5s | <1s | **7.0 min** | ~$0.06 | `docs/demos/tradeoff/03-如何挑选一款适合自己的咖啡豆-20260710-113400.pptx` ※ |
+| 4 | Rust 重写 | 27 | 91s | 65s | 13s | <1s | **2.8 min** | ~$0.06 | `docs/demos/tradeoff/04-给老板讲清楚为什么我们应该用-rust-重写订单系统-20260710-104531.pptx` |
+| 5 | 京都两日 | 27 | 374s | 73s | 5s | <1s | **7.5 min** | ~$0.06 | `docs/demos/tradeoff/05-周末两天玩遍京都-20260710-105304.pptx` |
+
+※ #3 首次跑在 `theme` 阶段 JSON 截断失败（422），重试 1 次成功。
+
+### 5.3 美观最大化版（5/5 成功）
+
+| # | 主题 | 页数 | outline | content | theme | render | **总时延** | 估算成本 | 产物 |
+|---|------|------|---------|---------|-------|--------|-----------|---------|------|
+| 1 | Python 入门 | 27 | 301s | 105s | 12s | <1s | **7.0 min** | ~$0.12 | `docs/demos/beauty/01-python-入门-30-分钟-20260710-115906.pptx` ※※ |
+| 2 | 年度复盘 | 27 | 209s | 129s | 30s | <1s | **6.1 min** | ~$0.12 | `docs/demos/beauty/02-2025-我的年度复盘-20260710-110228.pptx` |
+| 3 | 咖啡豆 | 27 | 256s | 106s | 9s | <1s | **6.2 min** | ~$0.12 | `docs/demos/beauty/03-如何挑选一款适合自己的咖啡豆-20260710-110840.pptx` |
+| 4 | Rust 重写 | 27 | 511s | 164s | 42s | <1s | **11.9 min** | ~$0.12 | `docs/demos/beauty/04-给老板讲清楚为什么我们应该用-rust-重写订单系统-20260710-115152.pptx` ※ |
+| 5 | 京都两日 | 27 | 226s | 179s | 23s | <1s | **7.1 min** | ~$0.12 | `docs/demos/beauty/05-周末两天玩遍京都-20260710-112012.pptx` |
+
+※ #4 首次跑 `theme` 截断失败，重试 1 次成功（717s）。  
+※※ #1 前 2 次分别在 `scenario` / `theme` 阶段失败，第 3 次成功。
+
+### 5.4 题面约束核对
+
+| 约束 | Trade-off | 美观最大化 |
+|------|-----------|-----------|
+| 单份时延 < 30 min | ✅ 最长 7.5 min | ✅ 最长 11.9 min |
+| 单份成本 < $10（美观版） | — | ✅ 粗算 ~$0.12 |
+| 25–30 页 | ✅ 全部 27 页 | ✅ 全部 27 页 |
+| 叙事连贯（一套非一堆） | 大纲一次 pro + consistency 契约 + 邻页 hint | 同左，且 pro 逐页文案更饱满 |
+
+**瓶颈观察：** `outline` 与 `scenarios` 在 `pptx` 阶段并行，计时相同；大纲单次 LLM 占 wall time 50–90%。京都、咖啡豆、Rust（beauty）等主题大纲耗时更长，与题材复杂度正相关。偶发失败集中在 **scenario / theme** 等小 JSON 输出阶段（非主链路），重试可恢复。
 
 ---
 
-## 6. 踩坑和取舍
+## 6. 遇到的问题和取舍
 
-| 踩的坑 / 权衡 | 处理 |
-|--------------|------|
-| **大纲一次生成 27 页 → token 截断** | 加 `TOKEN_LADDER`（8192→12288→16384）+ 截断检测（结尾非 `}` / 页数 < 请求数）自动升档重试。 |
-| **网关 HTTP 读超时 60s，pro 大纲跑不完就断** | `ChatModelFactory` 默认超时提到 **600s**。 |
-| **Spring `ObjectMapper` 注入失败导致 `/run` 500** | 控制器改为 `@RequestBody json: String`，业务层自己解析，去掉隐式依赖。 |
-| **逐页串行太慢** | 改并行，`Semaphore` 限流 8 路（`MAX_PARALLEL_SLIDES`），content 从数分钟降到 ~34s。 |
-| **单页偶发格式错 / 校验不过** | 分层重试：主模型 3 次（升 token），再换 1 个备选模型 2 次；校验失败把违规项回灌 prompt 重试。 |
-| **renderer 与 business 循环依赖风险** | 把 renderer 做成**零业务依赖的独立工具模块**（仅 framework + POI），DTO 用容忍式可空字段解析，`app` 负责组装。 |
-| **模板模式缺母版文件** | 提供 `renderer/tools/generate_template.py` 生成并入库 `deck-template.pptx`（7 版式，16:9）。 |
-| **密度升级后旧 fixture 无法验证新规则** | 明确区分「旧 deck JSON 仅测 renderer」与「需重跑 content 才验证密度」，避免用过期数据自证。 |
-
-**主动取舍**：v1 不做「部分成功」——任一页最终失败即整套失败，保证交付的永远是完整 25–30 页，而非残缺的一堆。图片 / 配图模块（`IMAGE_TOOL_SPEC`）已写 spec 但**暂缓**，优先保证「文字连贯 + 能下载」这条主干先跑通。
+| 遇到的问题 / 权衡                                 | 处理                                                                                        |
+|--------------------------------------------|-------------------------------------------------------------------------------------------|
+| **大纲一次生成 27 页 → token被截断**                 | 加 `TOKEN_LADDER`（8192→12288→16384）+ 截断检测（结尾非 `}` / 页数 < 请求数）。在一次请求后检查是否被截断，如果被截断，则自动升档重试。 |
+| **逐页串行太慢**                                 | 改并行，`Semaphore` 限流 8 路（`MAX_PARALLEL_SLIDES`），content 从数分钟降到 ~34s。                        |
+| **单页偶发格式错 / 校验不过**                         | 分层重试：主模型 3 次（升 token），再换 1 个备选模型 2 次；校验失败把违规项回灌 prompt 重试。                                |
+| **scenario / theme 小 JSON 偶发截断** | 大纲链路已加 token 阶梯；scenario、theme 仍仅 3 次重试且无升档，benchmark 中 4/10 首次失败、重试后 10/10 成功。后续应对齐 outline 的截断检测 + token ladder。 |
+| **renderer 与 business 循环依赖风险**             | 把 renderer 做成**零业务依赖的独立工具模块**（仅 framework + POI），DTO 用容忍式可空字段解析，`app` 负责组装。               |
+| **美观版未接 TEMPLATE 母版** | `PptxExportService` 仍固定 `PROGRAMMATIC`；美观版差异目前来自 **pro 全链路文案**，而非设计母版。TEMPLATE 模式已在 renderer 模块就绪，待 app 层切换。 |
 
 ---
 
@@ -165,8 +195,42 @@
 - **每段验收对照 spec 勾选 acceptance criteria**，不看「Agent 说完成了」，看代码 + 测试 + 实跑。
 - **跑测试**：`:renderer:test` / `:business:test` / `:app:test` + `./gradlew build` 必须全绿。
 - **CLI / API 实跑冒烟**：两种渲染模式各生成一份 pptx 对比；`stage=pptx` 落盘 + 下载链路实测。
-- **对数据保持怀疑**：区分「实测」与「待测」，本文档成本表**只填真实测过的**，其余明确标注待补。
+- **招聘题面 10 套 benchmark**：`scripts/exam-benchmark.sh` 对 `docs/exam-fixtures/` 全量跑通，失败用例自动/手动重试直至 10/10，结果写入 `docs/benchmark-results.jsonl` 与 `docs/demos/`。
+- **对数据保持怀疑**：区分「实测」与「待测」；成本在 token 未回传前标注为粗算。
 
 ---
 
-*本文档为初版，与代码同步演进；成本/时延表待 5 套 demo 两版跑齐后补全。*
+## 8. 本轮开发与测试总结（至 2026-07-10）
+
+### 8.1 系统能力概览
+
+已完成题面核心链路：**JSON → 27 页叙事连贯 pptx**，含大纲规划、场景推断、逐页文案、主题色、程序化渲染；前端可表单输入 / 预览 / 下载；支持按场景标签 **全链路 restyle 重生成**。
+
+### 8.2 关键工程修复（测试前完成）
+
+| 问题 | 修复 |
+|------|------|
+| `/v1/ppt/restyle` Jackson 无法反序列化 `OutlineJson` | Controller 改 Gson 手工解析 |
+| restyle 与首跑模型池不一致（mimo/minimax 404） | 主流程统一 `deepseek` 系列 |
+| 大纲 `truncated_output` / `bulletHints` 超标 / 连续 content | `OutlinePlannerImpl` 截断检测、hint 裁剪、大 deck 加 attempts |
+| 风格切换应重塑叙事而非只换色 | restyle = 新 stance → 新 outline → content → theme → pptx |
+
+### 8.3 测试结论（对齐招聘题面）
+
+- **交付物完整性**：代码 + README（待与题面 README 要求对齐）+ 本 `DESIGN.md` + **10 个 demo pptx** ✅
+- **速度**：Trade-off 均值 ~4.6 min/套，美观版 ~7.7 min/套，均远低于 30 min 上限 ✅
+- **成本**：粗算 Trade-off ~$0.06、美观 ~$0.12/套，远低于 $10 上限 ✅
+- **美观度**：程序化渲染 + LLM 主题色 + 13 种 slideType 版式映射；美观版 pro 文案明显更饱满（未上 TEMPLATE 母版，仍有提升空间）
+- **稳定性**：首次批量 7/10 成功，3 例为小 JSON 阶段偶发截断，重试后 **10/10**；生产环境需加固 scenario/theme 重试策略
+
+### 8.4 复现命令
+
+```bash
+./scripts/dev-up.sh
+./scripts/exam-benchmark.sh all          # 约 50–90 min，写 docs/benchmark-results.jsonl
+# 单版：./scripts/exam-benchmark.sh tradeoff
+# 单条：
+curl -s -X POST 'http://127.0.0.1:8080/v1/ppt/run?stage=pptx&outlineModel=deepseek-pro&contentModel=deepseek-flash' \
+  -H 'Content-Type: application/json' \
+  --data-binary @docs/exam-fixtures/01-python-intro.json
+```
